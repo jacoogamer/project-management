@@ -1,0 +1,286 @@
+.pm-port-wrap { display:flex; height:100%; }
+.pm-port-sidebar{
+  flex: 0 0 var(--sidebar-width, 180px);
+  border-right:1px solid var(--divider-color);
+  padding:6px;
+  overflow:auto;
+  color:var(--text-normal);        /* theme text colour */
+}
+.pm-port-sb-head{
+  display:flex;
+  justify-content:flex-start;
+  align-items:center;
+  font-weight:bold;
+  margin-bottom:4px;
+  color:var(--text-normal) !important;              /* follow theme text colour */
+}
+.pm-port-ul{ 
+  list-style:none; 
+  padding-left:0; 
+  margin:0;
+}
+.pm-port-ul li{
+  display:flex;
+  align-items:center;
+  cursor:pointer;
+  padding:2px 6px;
+  margin:0;
+  color:var(--text-normal);           /* follow theme */
+}
+.pm-port-ul li.active{ background:var(--background-modifier-hover); }
+.pm-port-name{
+  flex:1 1 auto;
+  color:var(--text-muted);               /* lighter for un‑selected rows */
+  white-space: nowrap;                   /* keep on one line */
+  overflow: hidden;                      /* hide overflow text */
+  text-overflow: ellipsis;               /* show … when clipped */
+}
+.pm-port-ul li:hover .pm-port-name,
+.pm-port-ul li.active .pm-port-name{
+  color:var(--interactive-accent);       /* theme accent when active/hover */
+}
+
+/* Selected but not hovered: keep normal text colour */
+.pm-port-ul li.active:not(:hover) .pm-port-name{
+  color:var(--text-normal);
+}
+.pm-port-ico{ margin-left:4px; color:var(--text-muted); cursor:pointer; }
+.pm-port-panel {
+  flex: 1 1 auto;
+  padding: 0 8px 8px 8px;
+  overflow: auto;
+}
+.pm-port-title{
+  font-weight: bold;
+  font-size: 1.1rem;
+  margin: 0;                          /* remove gap that caused jitter */
+  padding: 4px 6px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;             /* move portfolio name & buttons lower */
+  color: var(--text-normal) !important;
+  background: var(--background-primary);
+  position: sticky;
+  top: 0;                             /* stick to top of panel */
+  z-index: 20;                        /* above table header */
+  margin-bottom: 4px;                 /* small gap under the top bar */
+}
+.pm-port-open button{
+  margin-left:4px;
+  margin-right:8px;               /* wider gap from right edge */
+  color:var(--text-normal);        /* theme button text */
+}
+.pm-port-proj-table{ width:100%; border-collapse:collapse; }
+.pm-port-proj-table td{
+  padding:4px 6px;
+  border-bottom:1px solid var(--divider-color);
+  color:var(--text-normal);           /* follow theme */
+}
+.pm-port-save{
+  margin-top:6px;
+  color:var(--text-normal);           /* follow theme */
+}
+.pm-port-proj-table th{
+  padding: 2px 6px 0 6px;        /* no bottom padding */
+  border-bottom: none;           /* remove divider line */
+  text-align: left;
+  color: var(--text-normal) !important;
+  font-weight: 600;
+
+  position: sticky;
+  top: 0;                        /* stick flush under title bar */
+  background: var(--background-primary);
+  z-index: 15;
+}
+.pm-port-panel input,
+.pm-port-panel select,
+.pm-port-panel textarea{
+  color:var(--text-normal);
+}
+
+/* ── Links follow the theme accent colour ───────────────────────────── */
+.pm-port-sidebar a,
+.pm-port-panel   a,
+.pm-port-proj-table a {
+  color: var(--interactive-accent);
+  text-decoration: none;
+}
+.pm-port-sidebar a:hover,
+.pm-port-panel   a:hover,
+.pm-port-proj-table a:hover {
+  text-decoration: underline;
+}
+
+/* Override sidebar link colour for project entries */
+.pm-port-sidebar .pm-port-name a{
+  color: var(--text-muted);          /* muted when not selected/hovered */
+}
+
+/* Hover or active → accent colour (already defined but ensure priority) */
+.pm-port-ul li:hover .pm-port-name a,
+.pm-port-ul li.active .pm-port-name a{
+  color: var(--interactive-accent);
+}
+
+/* Active (but not hovered) → normal text colour */
+.pm-port-ul li.active:not(:hover) .pm-port-name a{
+  color: var(--text-normal);
+}
+
+/* ── Draggable splitter between sidebar and panel ───────────────────── */
+.pm-port-split{
+  flex:0 0 4px;                  /* fixed 4‑px width */
+  cursor:col-resize;
+  background:var(--background-modifier-border);
+}
+.pm-port-split:hover{
+  background:var(--interactive-accent);
+}
+
+.pm-port-proj-table tbody tr:first-child td{
+  border-top: none;
+}
+.pm-port-proj-scroll{
+  overflow-y:auto;
+  max-height:calc(100vh - 220px);   /* leaves room for other UI */
+  margin-top: 58px;  /* 32px (title+gap) + 26px column header */
+}
+
+
+/* Column header row just beneath the title bar */
+.pm-port-col-head{
+  position: sticky;
+  top: 32px;                   /* 28px title + 4px gap */
+  z-index: 18;
+  background: var(--background-primary);
+  font-weight: 600;
+  padding: 2px 6px;
+  display: grid;
+  grid-template-columns: 65% 20% 15%;
+}
+
+.pm-port-col-head span{ text-align:left; }
+
+/* Hover tooltip for project meta */
+.pm-port-tooltip{
+  position: fixed;
+  max-width: 260px;
+  background: var(--background-primary);
+  border: 1px solid var(--divider-color);
+  box-shadow: 0 2px 4px rgba(0,0,0,.15);
+  padding: 6px 8px;
+  font-size: 0.85rem;
+  border-radius: 4px;
+  pointer-events: none;
+  z-index: 9999;
+}
+.pm-port-tooltip strong{ font-weight: 600; }
+.pm-port-tooltip em{ font-style: italic; }
+
+/* ── Colour logic for main project list table ─────────────────────── */
+/* Default: muted text */
+.pm-port-proj-table tbody tr td{
+  color: var(--text-muted);
+}
+
+/* Selected row: normal text colour */
+.pm-port-proj-table tbody tr.active td{
+  color: var(--text-normal);
+}
+
+/* Hover row: accent colour */
+.pm-port-proj-table tbody tr:hover td{
+  color: var(--interactive-accent);
+}
+
+/* Override link colour inside project list cells */
+.pm-port-proj-table tbody tr td a{
+  color: var(--text-muted) !important;           /* default muted */
+}
+
+/* Selected row → normal text colour */
+.pm-port-proj-table tbody tr.active td a{
+  color: var(--text-normal) !important;
+}
+
+/* Hover row → accent colour */
+.pm-port-proj-table tbody tr:hover td a{
+  color: var(--interactive-accent) !important;
+}
+
+/* Force colour on the specific project-link class */
+.pm-port-proj-table tbody tr td .pm-port-proj-link{
+  color: var(--text-muted) !important;   /* default muted */
+}
+
+.pm-port-proj-table tbody tr.active td .pm-port-proj-link{
+  color: var(--text-normal) !important;  /* active row normal */
+}
+
+.pm-port-proj-table tbody tr:hover td .pm-port-proj-link{
+  color: var(--interactive-accent) !important;  /* hover accent */
+}
+
+/* Actions column: keep icons side-by-side */
+.pm-port-actions {
+  display: flex;        /* lay out children horizontally */
+  align-items: center;  /* vertical centering */
+  gap: 6px;             /* same spacing you used in JS */
+}
+
+/* Description row inside the sticky title/header */
+.pm-port-desc-row {
+  width: 100%;
+  padding: 0 6px 4px;
+  box-sizing: border-box;
+}
+
+.pm-port-desc {
+  width: 100%;
+  min-height: 60px;
+  resize: vertical !important;   /* ← only vertical resizing */
+  font-size: var(--font-ui-small, 0.9rem);
+}
+
+/* ── Create‑Project button under portfolio list ─────────────── */
+.pm-create-proj {
+  margin-top: 12px;
+  text-align: center;
+}
+
+.pm-create-proj button {
+  padding: 4px 12px;
+  color: var(--text-normal);
+}
+.pm-port-bullet        { 
+  width: 1.2em; 
+  text-align: center; 
+  flex-shrink: 0;
+}
+
+/* Force the project table header row to render */
+.pm-port-proj-table thead {
+  display: table-header-group !important;   /* override any earlier rules */
+}
+
+/* ── Lucide check icon styling for project selection ─────────────────── */
+.pm-port-proj-table .pm-port-check {
+  /* Ensure icons are visible in all themes */
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Selected state - use accent color */
+.pm-port-proj-table tbody tr.active .pm-port-check {
+  color: var(--interactive-accent);
+}
+
+/* Hover state for better visibility */
+.pm-port-proj-table .pm-port-check:hover {
+  color: var(--interactive-accent);
+  transform: scale(1.1);
+}

@@ -1,0 +1,558 @@
+/* ───────── Today View ───────── */
+
+.pm-today-view {
+  padding: 16px;
+  background: var(--background-primary);
+}
+
+/* Header */
+.pm-today-header {
+  text-align: center;
+  margin-bottom: 24px;
+  padding: 20px;
+  background: var(--background-secondary);
+  border-radius: 8px;
+  border: 1px solid var(--divider-color);
+}
+
+.pm-today-header h2 {
+  margin: 0 0 8px 0;
+  color: var(--text-normal);
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.pm-today-subtitle {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  font-weight: 400;
+  margin-bottom: 8px;
+  font-style: italic;
+}
+
+.pm-today-date {
+  color: var(--text-muted);
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+/* Date row with formatted date and date picker */
+.pm-today-date-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.pm-today-date {
+  color: var(--text-muted);
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.pm-today-date-picker {
+  padding: 4px 8px;
+  border: 1px solid var(--divider-color);
+  border-radius: 4px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  font-size: 0.9rem;
+}
+
+/* Filter controls */
+.pm-today-filters {
+  margin-top: 16px;
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.pm-today-filter-btn {
+  padding: 8px 16px;
+  border: 1px solid var(--divider-color);
+  border-radius: 6px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pm-today-filter-btn:hover {
+  background: var(--background-modifier-hover);
+  border-color: var(--background-modifier-border);
+}
+
+.pm-today-filter-btn.active {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-color: var(--interactive-accent);
+}
+
+/* Projects dropdown */
+.pm-proj-dd {
+  position: absolute;
+  background: var(--background-primary);
+  border: 1px solid var(--divider-color);
+  border-radius: 8px;
+  box-shadow: var(--shadow-s);
+  z-index: 1000;
+  min-width: 240px;
+  max-width: 400px;
+  max-height: 300px;
+  overflow-y: auto;
+  padding: 8px 0;
+}
+
+.pm-proj-dd-ctl {
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--divider-color);
+  margin-bottom: 8px;
+  font-size: 0.85rem;
+}
+
+.pm-proj-dd-ctl a {
+  color: var(--interactive-accent);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.pm-proj-dd-ctl a:hover {
+  text-decoration: underline;
+}
+
+.pm-proj-dd-item {
+  display: flex;
+  align-items: center;
+  padding: 6px 16px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.1s ease;
+}
+
+.pm-proj-dd-item:hover {
+  background: var(--background-modifier-hover);
+}
+
+.pm-dd-check {
+  color: var(--interactive-accent);
+}
+
+/* Empty state */
+.pm-today-empty {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  font-style: italic;
+}
+
+/* Sections container */
+.pm-today-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Individual section */
+.pm-today-section {
+  background: var(--background-secondary);
+  border: 1px solid var(--divider-color);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* Section header */
+.pm-today-section-header {
+  display: flex;
+  align-items: center;
+  padding: 16px 20px;
+  background: var(--background-modifier-hover);
+  border-bottom: 1px solid var(--divider-color);
+  gap: 8px;
+}
+
+.pm-today-section-header.collapsible {
+  cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
+  transition: background-color 0.2s ease;
+}
+
+.pm-today-section-header.collapsible:hover {
+  background: var(--background-modifier-active);
+}
+
+.pm-today-collapse-icon {
+  display: flex;
+  align-items: center;
+  opacity: 0.7;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+  flex-shrink: 0;
+}
+
+.pm-today-section-header:hover .pm-today-collapse-icon {
+  opacity: 1;
+}
+
+.pm-today-section-header h3 {
+  margin: 0;
+  color: var(--text-normal);
+  font-size: 1.1rem;
+  font-weight: 600;
+  flex: 1;
+}
+
+/* Collapsed state */
+.pm-today-section.collapsed .pm-today-task-list {
+  display: none !important;
+}
+
+.pm-today-section.collapsed .pm-today-section-header {
+  border-bottom: none;
+}
+
+.pm-today-count {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+/* Task list */
+.pm-today-task-list {
+  padding: 0;
+}
+
+/* Individual task */
+.pm-today-task {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--divider-color);
+  border-left: 3px solid transparent;
+  transition: background-color 0.2s ease;
+}
+
+.pm-today-task:last-child {
+  border-bottom: none;
+}
+
+.pm-today-task:hover {
+  background: var(--background-modifier-hover);
+}
+
+/* Task status border styling */
+.pm-today-task.status-not-started {
+  border-left-color: #dc262620;
+}
+
+.pm-today-task.status-in-progress {
+  border-left-color: #eab30820;
+}
+
+.pm-today-task.status-completed {
+  border-left-color: #05966920;
+}
+
+.pm-today-task.status-on-hold {
+  border-left-color: #7c3aed20;
+  opacity: 0.7;
+}
+
+/* Task header */
+.pm-today-task-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+/* Status indicator */
+.pm-today-status-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 6px;
+}
+
+.pm-today-status-indicator.status-not-started {
+  background: #dc2626;
+}
+
+.pm-today-status-indicator.status-in-progress {
+  background: #eab308;
+}
+
+.pm-today-status-indicator.status-completed {
+  background: #059669;
+}
+
+.pm-today-status-indicator.status-on-hold {
+  background: #7c3aed;
+}
+
+/* On-hold indicator */
+.pm-today-on-hold-indicator {
+  display: flex;
+  align-items: center;
+  color: #7c3aed;
+  font-size: 1rem;
+  margin-right: 8px;
+  opacity: 0.8;
+}
+
+/* Priority badges */
+.pm-today-priority {
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.pm-priority-high {
+  background: #dc2626;
+  color: white;
+}
+
+.pm-priority-medium {
+  background: #ea580c;
+  color: white;
+}
+
+.pm-priority-low {
+  background: #059669;
+  color: white;
+}
+
+/* Task title */
+.pm-today-task-title {
+  flex: 1;
+  color: var(--text-normal);
+  font-weight: 500;
+  font-size: 1rem;
+  line-height: 1.4;
+}
+
+/* Due date */
+.pm-today-due {
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+  background: var(--background-modifier-border);
+  color: var(--text-muted);
+}
+
+.pm-today-due.overdue {
+  background: #dc2626 !important;
+  color: white !important;
+}
+
+.pm-today-due.due-today {
+  background: #ea580c !important;
+  color: white !important;
+}
+
+.pm-today-due.urgent {
+  background: #dc2626 !important;
+  color: white !important;
+}
+
+.pm-today-due.soon {
+  background: #eab308 !important;
+  color: white !important;
+}
+
+.pm-today-due.distant {
+  background: #059669 !important;
+  color: white !important;
+}
+
+.pm-today-due.completed {
+  background: #059669 !important;
+  color: white !important;
+}
+
+/* Default due date styling (no specific urgency) */
+.pm-today-due:not(.overdue):not(.due-today):not(.urgent):not(.soon):not(.distant) {
+  background: var(--background-modifier-border);
+  color: var(--text-muted);
+}
+
+/* Start date */
+.pm-today-start {
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+  background: var(--background-modifier-border);
+  color: var(--text-muted);
+}
+
+.pm-today-start.started {
+  background: #059669 !important;
+  color: white !important;
+}
+
+.pm-today-start.should-start {
+  background: #2563eb !important;
+  color: white !important;
+}
+
+.pm-today-start.overdue {
+  background: #dc2626 !important;
+  color: white !important;
+}
+
+.pm-today-start.urgent {
+  background: #dc2626 !important;
+  color: white !important;
+}
+
+.pm-today-start.soon {
+  background: #eab308 !important;
+  color: white !important;
+}
+
+.pm-today-start.distant {
+  background: #059669 !important;
+  color: white !important;
+}
+
+.pm-today-start.on-hold {
+  background: #7c3aed !important;
+  color: white !important;
+}
+
+.pm-today-start.completed {
+  background: #059669 !important;
+  color: white !important;
+}
+
+.pm-today-start:not(.should-start):not(.overdue):not(.urgent):not(.soon):not(.distant) {
+  background: var(--background-modifier-border);
+  color: var(--text-muted);
+}
+
+/* Task details */
+.pm-today-task-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-left: 24px;
+}
+
+.pm-today-project,
+.pm-today-assignee,
+.pm-today-id,
+.pm-today-status {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Task type icon */
+.pm-today-task-type-icon {
+  display: flex;
+  align-items: center;
+  color: var(--text-accent);
+  font-size: 0.9rem;
+}
+
+/* Section-specific styling */
+.pm-today-section.overdue {
+  border-left: 4px solid #dc2626;
+}
+
+.pm-today-section.due-today {
+  border-left: 4px solid #ea580c;
+}
+
+.pm-today-section.due-this-week {
+  border-left: 4px solid #059669;
+}
+
+.pm-today-section.due-next-week {
+  border-left: 4px solid #7c3aed;
+}
+
+.pm-today-section.high-priority {
+  border-left: 4px solid #dc2626;
+}
+
+.pm-today-section.in-progress {
+  border-left: 4px solid #2563eb;
+}
+
+.pm-today-section.assignee {
+  border-left: 4px solid #059669;
+}
+
+.pm-today-section.unassigned {
+  border-left: 4px solid #7c3aed;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .pm-today-view {
+    padding: 12px;
+  }
+  
+  .pm-today-header {
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  
+  .pm-today-header h2 {
+    font-size: 1.3rem;
+  }
+  
+  .pm-today-task {
+    padding: 12px 16px;
+  }
+  
+  .pm-today-task-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
+  .pm-today-task-details {
+    margin-left: 0;
+    gap: 8px;
+  }
+}
+
+/* Dark mode adjustments */
+.theme-dark .pm-today-view {
+  background: var(--background-primary);
+}
+
+.theme-dark .pm-today-section {
+  background: var(--background-secondary);
+  border-color: var(--background-modifier-border);
+}
+
+.theme-dark .pm-today-section-header {
+  background: var(--background-primary);
+  border-color: var(--background-modifier-border);
+}
+
+.theme-dark .pm-today-task:hover {
+  background: var(--background-modifier-hover);
+}

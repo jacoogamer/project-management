@@ -1,0 +1,543 @@
+/* ───────── Dashboard View ───────── */
+
+.pm-dashboard-view {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+}
+
+/* Top toolbar */
+.pm-dash-topbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 0;
+  background: var(--background-primary);
+  border-bottom: 1px solid var(--divider-color);
+  margin-bottom: 16px;
+}
+
+
+
+/* Dashboard content container */
+.pm-dashboard-content {
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+/* Dashboard grid layout */
+.pm-dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  grid-template-rows: auto auto auto;
+  gap: 20px;
+}
+
+/* Chart cards */
+.pm-chart-card {
+  background: var(--background-primary);
+  border: 1px solid var(--divider-color);
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  min-height: 300px;
+}
+
+.pm-chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.pm-chart-header h3 {
+  margin: 0;
+  color: var(--text-normal);
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.pm-chart-zoom-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pm-chart-zoom-btn:hover {
+  color: var(--interactive-accent);
+  background: var(--background-modifier-hover);
+}
+
+.pm-chart-back-btn {
+  background: var(--background-secondary);
+  border: 1px solid var(--divider-color);
+  color: var(--text-normal);
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: 4px;
+  margin-bottom: 16px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pm-chart-back-btn:hover {
+  background: var(--background-modifier-hover);
+  color: var(--interactive-accent);
+}
+
+.pm-chart-card h3 {
+  margin: 0 0 16px 0;
+  color: var(--text-normal);
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.pm-chart-canvas {
+  flex: 1;
+  min-height: 250px;
+  max-height: 300px;
+}
+
+/* Summary card */
+.pm-summary-card {
+  background: var(--background-primary);
+  border: 1px solid var(--divider-color);
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  grid-column: 1 / -1;
+  grid-row: auto;
+}
+
+.pm-summary-card h3 {
+  margin: 0 0 16px 0;
+  color: var(--text-normal);
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.pm-summary-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.pm-stat-item {
+  padding: 12px;
+  background: var(--background-secondary);
+  border-radius: 6px;
+  color: var(--text-normal);
+  font-size: 0.9rem;
+}
+
+.pm-stat-item strong {
+  color: var(--text-accent);
+  font-weight: 600;
+}
+
+/* No data message */
+.pm-no-data {
+  text-align: center;
+  color: var(--text-muted);
+  font-style: italic;
+  margin: 40px 0;
+}
+
+/* Project filter button */
+.pm-proj-btn {
+  font-size: var(--font-ui-smaller, 0.85rem);
+  margin-left: 8px;
+  padding: 4px 8px;
+  border: 1px solid var(--divider-color);
+  border-radius: 4px;
+  background: var(--background-secondary);
+  color: var(--text-normal);
+  cursor: pointer;
+}
+
+.pm-proj-btn:hover {
+  background: var(--background-modifier-hover);
+}
+
+/* Project dropdown */
+.pm-proj-dd {
+  position: fixed;
+  max-height: 50vh;
+  overflow-y: auto;
+  background: var(--background-primary);
+  border: 1px solid var(--divider-color);
+  box-shadow: 0 2px 6px rgba(0,0,0,.2);
+  padding: 6px 8px;
+  z-index: 10000;
+  min-width: 180px;
+  border-radius: 4px;
+  font-size: var(--font-ui-smaller, 0.85rem);
+}
+
+/* Control links line at top of each picker */
+.pm-proj-dd-ctl {
+  margin-bottom: 4px;
+  font-weight: 600;
+  text-align: left;
+  padding-left: 4px;
+}
+
+.pm-proj-dd-ctl a {
+  cursor: pointer;
+  text-decoration: underline;
+  color: var(--text-accent);
+}
+
+.pm-proj-dd-item {
+  display: block;
+  white-space: nowrap;
+  cursor: pointer;
+  line-height: 1.4;
+  padding-right: 16px;
+}
+
+/* Dropdown check icon styling */
+.pm-proj-dd .pm-dd-check {
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Selected state - use accent color */
+.pm-proj-dd .pm-dd-check svg[data-lucide="check-circle"] {
+  color: var(--interactive-accent) !important;
+}
+
+/* Alternative selector for selected state */
+.pm-proj-dd .pm-dd-check[data-checked="true"] svg {
+  color: var(--interactive-accent) !important;
+}
+
+/* Hover state for better visibility */
+.pm-proj-dd .pm-dd-check:hover {
+  color: var(--interactive-accent);
+  transform: scale(1.1);
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+  .pm-dashboard-grid {
+    grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: auto auto auto auto;
+  }
+  
+  .pm-summary-card {
+    grid-column: 1 / -1;
+    grid-row: auto;
+  }
+}
+
+@media (max-width: 768px) {
+  .pm-dashboard-grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
+    gap: 16px;
+  }
+  
+  .pm-summary-card {
+    grid-column: 1 / -1;
+    grid-row: auto;
+  }
+  
+  .pm-chart-card {
+    min-height: 250px;
+  }
+  
+  .pm-chart-canvas {
+    min-height: 200px;
+  }
+  
+  .pm-summary-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Chart.js theme integration */
+.pm-dashboard-view canvas {
+  filter: var(--chart-filter, none);
+}
+
+/* Dark theme adjustments for charts */
+.theme-dark .pm-dashboard-view canvas {
+  filter: brightness(1.1) contrast(1.2);
+}
+
+/* Dark mode specific chart improvements */
+.theme-dark .pm-chart-card {
+  background: var(--background-secondary);
+  border-color: var(--background-modifier-border);
+}
+
+.theme-dark .pm-summary-card {
+  background: var(--background-secondary);
+  border-color: var(--background-modifier-border);
+}
+
+.theme-dark .pm-stat-item {
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+}
+
+/* Improve chart readability in dark mode */
+.theme-dark .pm-dashboard-view .pm-chart-canvas {
+  filter: brightness(1.05) contrast(1.1);
+}
+
+/* Light mode chart text styling */
+.pm-dashboard-view canvas {
+  color: #000000 !important;
+}
+
+/* Light mode chart tooltip styling */
+.pm-dashboard-view .chartjs-tooltip {
+  background-color: #1f2937 !important;
+  color: #ffffff !important;
+  border: 1px solid #374151 !important;
+}
+
+/* Light mode chart legend styling */
+.pm-dashboard-view .chartjs-legend {
+  color: #000000 !important;
+}
+
+/* Dark mode overrides */
+.theme-dark .pm-dashboard-view canvas {
+  color: #ffffff !important;
+}
+
+/* Dark mode chart tooltip improvements */
+.theme-dark .pm-dashboard-view .pm-chart-card {
+  --chart-text-color: #ffffff;
+  --chart-bg-color: #2d3748;
+  --chart-border-color: #4a5568;
+}
+
+/* Dark mode chart tooltip styling */
+.theme-dark .pm-dashboard-view .chartjs-tooltip {
+  background-color: #2d3748 !important;
+  color: #ffffff !important;
+  border: 1px solid #4a5568 !important;
+}
+
+/* Dark mode chart legend styling */
+.theme-dark .pm-dashboard-view .chartjs-legend {
+  color: #ffffff !important;
+}
+
+/* ───────── Zoom View Styles ───────── */
+
+/* Project breakdown styles */
+.pm-project-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.pm-project-card {
+  background: var(--background-secondary);
+  border: 1px solid var(--divider-color);
+  border-radius: 6px;
+  padding: 12px;
+}
+
+.pm-project-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.pm-project-header h4 {
+  margin: 0;
+  color: var(--text-normal);
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.pm-project-total {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  background: var(--background-primary);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.pm-project-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.pm-project-stats .pm-stat-item {
+  padding: 6px 8px;
+  font-size: 0.8rem;
+  background: var(--background-primary);
+  border: 1px solid var(--divider-color);
+}
+
+.pm-completion-rate {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  text-align: center;
+  padding: 4px;
+  background: var(--background-primary);
+  border-radius: 4px;
+}
+
+/* Assignee breakdown styles */
+.pm-assignee-charts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.pm-mini-chart-card {
+  background: var(--background-secondary);
+  border: 1px solid var(--divider-color);
+  border-radius: 6px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  min-height: 180px;
+}
+
+.pm-assignee-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.pm-assignee-header h5 {
+  margin: 0;
+  color: var(--text-normal);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.pm-assignee-total {
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  background: var(--background-primary);
+  padding: 2px 4px;
+  border-radius: 3px;
+}
+
+.pm-mini-chart-canvas {
+  flex: 1;
+  min-height: 120px;
+  max-height: 140px;
+}
+
+/* Status color indicators */
+.pm-stat-item.completed {
+  border-left: 3px solid #27ae60;
+}
+
+.pm-stat-item.in-progress {
+  border-left: 3px solid #f39c12;
+}
+
+.pm-stat-item.not-started {
+  border-left: 3px solid #e74c3c;
+}
+
+.pm-stat-item.on-hold {
+  border-left: 3px solid #3498db;
+}
+
+.pm-stat-item.epic {
+  border-left: 3px solid #8e44ad;
+}
+
+.pm-stat-item.story {
+  border-left: 3px solid #d68910;
+}
+
+.pm-stat-item.subtask {
+  border-left: 3px solid #16a085;
+}
+
+.pm-stat-item.other {
+  border-left: 3px solid #2c3e50;
+}
+
+/* Light mode text color overrides for assignee breakdown */
+.pm-assignee-charts .pm-assignee-header h5 {
+  color: #000000 !important;
+}
+
+.pm-assignee-charts .pm-assignee-total {
+  color: #666666 !important;
+}
+
+.pm-mini-chart-card {
+  color: #000000 !important;
+}
+
+.pm-mini-chart-card * {
+  color: #000000 !important;
+}
+
+/* Dark mode overrides to restore proper colors */
+.theme-dark .pm-assignee-charts .pm-assignee-header h5 {
+  color: var(--text-normal) !important;
+}
+
+.theme-dark .pm-assignee-charts .pm-assignee-total {
+  color: var(--text-muted) !important;
+}
+
+.theme-dark .pm-mini-chart-card {
+  color: var(--text-normal) !important;
+}
+
+.theme-dark .pm-mini-chart-card * {
+  color: var(--text-normal) !important;
+}
+
+/* Responsive adjustments for zoom view */
+@media (max-width: 768px) {
+  .pm-assignee-charts {
+    grid-template-columns: 1fr;
+  }
+  
+  .pm-project-stats {
+    grid-template-columns: 1fr;
+  }
+  
+  .pm-mini-chart-card {
+    min-height: 160px;
+  }
+  
+  .pm-mini-chart-canvas {
+    min-height: 100px;
+    max-height: 120px;
+  }
+}

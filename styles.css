@@ -1,0 +1,926 @@
+.pm-status-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  margin-left: 4px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+  color: inherit;
+}
+.pm-status-btn svg {
+  width: 14px;
+  height: 14px;
+  stroke: currentColor;
+}
+.pm-in-progress-dot {
+  color: green;
+  font-size: 0.8em;
+  margin-left: 4px;
+}
+
+.pm-on-hold-dot {
+  color: orange;
+  font-size: 0.8em;
+  margin-left: 4px;
+}
+
+/* ===== Settings Page Styling ===== */
+
+/* Collapsible sections */
+.pm-settings-section {
+  margin-bottom: 16px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.pm-settings-section[open] {
+  background: var(--background-secondary);
+}
+
+.pm-settings-summary {
+  background: var(--background-primary);
+  padding: 12px 16px;
+  cursor: pointer;
+  -webkit-user-select: none;
+  -webkit-user-select: none;
+  user-select: none;
+  border-bottom: 1px solid var(--background-modifier-border);
+  transition: background-color 0.2s ease;
+  list-style: none; /* hide native marker in Chromium/Firefox */
+  display: flex;              /* arrow + header on one line */
+  align-items: center;        /* vertical centering */
+}
+
+.pm-settings-summary:hover {
+  background: var(--background-secondary);
+}
+
+.pm-settings-summary h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-normal);
+  flex: 1 1 auto;            /* take remaining space on the row */
+}
+
+/* Hide default summary arrow and add custom one */
+.pm-settings-summary::-webkit-details-marker {
+  display: none;
+}
+
+/* Hide default marker in Chromium/Firefox */
+.pm-settings-summary::marker {
+  content: "";
+}
+
+.pm-settings-summary::before {
+  content: "▶";
+  display: inline-block;
+  margin-right: 8px;
+  transition: transform 0.2s ease;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.pm-settings-section[open] .pm-settings-summary::before {
+  transform: rotate(90deg);
+}
+
+/* Settings content area */
+.pm-settings-section > div {
+  padding: 16px;
+  background: var(--background-primary);
+}
+
+/* Ensure proper spacing between settings */
+.pm-settings-section .setting-item {
+  margin-bottom: 12px;
+}
+
+.pm-settings-section .setting-item:last-child {
+  margin-bottom: 0;
+}
+:root {
+  --pm-accent: var(--interactive-accent);
+
+  /* ── Timeline bar colours ── */
+  --pm-bar-e-color-light:  #d9534f;
+  --pm-bar-s-color-light:  #6c757d;
+  --pm-bar-sb-color-light: #5bc0de;
+
+  --pm-bar-e-color-dark:   #ff7670;
+  --pm-bar-s-color-dark:   #adb5bd;
+  --pm-bar-sb-color-dark:  #66d9ef;
+
+  /* Default binding (light mode) */
+  --pm-bar-e-color:  var(--pm-bar-e-color-light);
+  --pm-bar-s-color:  var(--pm-bar-s-color-light);
+  --pm-bar-sb-color: var(--pm-bar-sb-color-light);
+}
+
+/* Dark‑theme override: re‑bind bar variables to dark palette */
+.theme-dark {
+  --pm-bar-e-color:  var(--pm-bar-e-color-dark);
+  --pm-bar-s-color:  var(--pm-bar-s-color-dark);
+  --pm-bar-sb-color: var(--pm-bar-sb-color-dark);
+}
+
+/* ───────── Timeline two–pane layout ───────── */
+/* container that holds the fixed project column + scrollable timeline */
+.pm-tl-outer {
+  display: flex;
+  align-items: flex-start;
+  position: relative;      /* context for absolute splitter */
+  width: 100%;
+  height: 100%;            /* fill the Obsidian pane */
+  overflow-y: hidden;      /* each inner pane handles vertical scroll */
+  overflow-x: hidden;      /* lock project column in place */
+}
+
+.pm-tl-left,
+.pm-tl-right {
+  height: 100%;            /* makes overflow-y effective */
+}
+
+/* fixed‑width column for project names */
+.pm-tl-left {
+  position: relative;          /* header anchors inside this column */
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow-y: hidden;          /* this column does not scroll itself */
+  padding-top: 26px;           /* space for fixed header height */
+  background: var(--background-primary);
+  z-index: 20;                 /* above bars, below splitter/header */
+}
+
+.pm-tl-right  {          /* horizontally scrollable timeline */
+  flex: 1 1 auto;
+  overflow-x: auto;
+  position: relative;    /* context for sticky header */
+  display: flex;
+  flex-direction: column;
+}
+
+.pm-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.pm-table th,
+.pm-table td {
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--divider-color);
+}
+.pm-progress {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--background-modifier-border);
+}
+.pm-progress-inner {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--pm-accent);
+}
+
+/* --- Timeline view tweaks --- */
+.pm-timeline {
+  display: flex;
+  flex-direction: column;
+  /* let the parent .pm-tl-right handle scrolling so sticky header works */
+  overflow: visible;
+  position: relative;    /* context for sticky header */
+}
+/* ===== Calendar grid for Timeline ===== */
+.pm-tl-header {
+  display: flex;
+  gap: 0;
+  height: 10px;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.pm-tl-daycell {
+  position: relative;                 /* allow pseudo‑element positioning */
+  flex: 0 0 auto;
+  height: 100%;
+  border-left: 1px solid var(--background-modifier-border);
+}
+
+/* Month-start guideline that extends well below the header into timeline rows */
+
+/* Weekend columns: light band that spans header + all timeline rows */
+
+/* .pm-tl-weekend {
+  background: var(--background-modifier-hover);
+} */
+
+.pm-tl-month-start {
+  border-left: 2px solid var(--interactive-accent);
+}
+
+.pm-tl-today {
+  border-left: 2px solid var(--color-yellow);
+}
+
+/* Sticky header wrappers and month label row */
+.pm-tl-headwrap {
+  position: sticky;
+  top: 0;
+  z-index: 150;               /* header above bars and arrows */
+  background: var(--background-primary);
+  padding-bottom: 3px;   /* adds 1 px extra space below the header */
+}
+
+/* make the month/day header strip stay above the arrow SVG layer */
+.pm-tl-header,
+.pm-tl-monthrow {
+  position: sticky;
+  top: 0;
+  z-index: 150;              /* higher than splitter (120) and arrow layer */
+  background: var(--background-primary);
+}
+
+.pm-tl-monthrow {
+  display: flex;
+  align-items: center;          /* vertically center label */
+  height: 14px;                 /* slightly taller for padding */
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.pm-tl-month-label {
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  transform: translateY(1px);
+  font-size: 10px;
+  font-weight: bold;
+  line-height: 12px;
+  text-align: left;
+  color: var(--text-muted);
+  padding-left: 2px;                    /* gap for 2‑px bar */
+  border-left: 1px solid transparent;   /* compensates day grid line */
+}
+.pm-tl-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 27px;                    /* +2 px taller row */
+  z-index: 115;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+.pm-tl-label {
+  display: inline-block;
+  padding: 5px 6px 0px;   /* shift text 1 px lower */
+  flex: 0 0 auto;
+  flex-shrink: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 27px;                              /* keep text centred */
+}
+
+.pm-tl-nameheader {
+  padding: 3px 6px 2px;
+  /*font-weight: bold;*/
+  background: var(--background-primary);  /* match tasks‑list rows */
+  color: var(--interactive-accent);       /* keep icons/text accent‑coloured */
+  cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
+
+  position: absolute;          /* fixed at top of project column */
+  top: 0;
+  left: 0;
+
+  z-index: 40;                 /* above bars and arrows */
+  border-bottom: 1px solid var(--background-modifier-border);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pm-tl-splitter {
+  position: absolute;              /* fixed bar spanning full list height */
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  cursor: ew-resize;
+  background: var(--background-modifier-border);
+  transition: background 0.1s;
+  z-index: 120;                    /* above arrow layer */
+}
+
+.pm-tl-splitter:hover {
+  background: var(--interactive-accent);
+}
+
+/* ensure bars sit above background */
+.pm-tl-barwrap {
+  position: relative;     /* establish positioning context for absolute bars */
+  flex: 1;
+  height: 27px;                                   /* match row height */
+  padding-top: 0;                                 /* shift bars down by 2 px */
+}
+.pm-tl-bar {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  left: 0;
+  width: 14px;                                
+  height: 20px;
+  background: var(--pm-accent, #e63946);       /* accent colour with red fallback */
+  border-radius: 2px;
+  z-index: 2;                /* bars sit lowest in the stack */
+  box-shadow: var(--pm-bar-shadow, 0 0 4px rgba(0,0,0,.25));
+}
+
+/* completed tasks */
+/* Completed‑task bars (use user‑configurable colours) */
+.pm-tl-bar-done {
+  background: var(--pm-bar-done-light, #2ecc71) !important;
+  opacity: 1;
+}
+body.theme-dark .pm-tl-bar-done {
+  background: var(--pm-bar-done-dark, #6fbf3a) !important;
+}
+
+/* subtle hover highlight */
+.pm-tl-bar:hover { outline: 1px solid var(--interactive-accent); }
+
+.pm-tl-daycell {
+  flex: 0 0 auto;
+  height: 100%;
+  width: 4px;                  /* matches pxPerDay */
+  background: transparent;
+  box-shadow: inset 1px 0 var(--background-modifier-border);
+}
+
+/* plain task list when bars are hidden */
+.pm-task-list {
+  margin-left: 12px;
+}
+
+.pm-task-line {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 18px;
+  white-space: nowrap;          /* prevent wrapping */
+  overflow: hidden;             /* clip overflow */
+  text-overflow: ellipsis;      /* show … when clipped */
+}
+
+.pm-task-line a {
+  flex: 1 1 auto;               /* allow shrinking */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pm-task-line:hover {
+  text-decoration: underline;
+}
+
+.pm-tl-taskrow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  padding: 3px 0 2px 12px;   /* top padding ↓ 1 px */
+  min-height: 27px;      /* 23 px bar height + 2 px vertical padding */
+  line-height: 25px;     /* text (and caret) centred in the new row */
+  border-bottom: 1px solid var(--background-modifier-border); /* horizontal rule */
+}
+.pm-tl-taskrow:hover a 
+{ 
+  text-decoration: underline; 
+}
+.pm-arrow-layer {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+  z-index: 150 !important;           /*      above rows/bars, below heat‑map(148) & header(150) */
+}
+
+.pm-in-progress-dot {
+  color: green;
+  font-size: 0.8em;
+  margin-left: 4px;
+}
+
+.pm-on-hold-dot {
+  color: orange;
+  font-size: 0.8em;
+  margin-left: 4px;
+}
+
+.pm-status-btn.in-progress svg {
+  color: green;
+  stroke: currentColor;
+}
+
+.pm-status-btn.on-hold svg {
+  color: orange;
+  stroke: currentColor;
+}
+
+/* normal dependency arrow appearance */
+.pm-dep-arrow {
+  fill: none;
+  stroke: var(--pm-accent, #000);
+  stroke-width: 1px;
+  opacity: 0.8;
+  vector-effect: non-scaling-stroke; /* keep 1.5 px even when zoomed */
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+/* Right pane scrolls horizontally *and* vertically so sticky header works.
+   Arrows stay visible because they’re inside the same scroll container. */
+/* right pane: vertical scroll, let arrows extend horizontally */
+.pm-tl-right {
+  overflow-x: visible !important;   /* arrows aren't clipped */
+  overflow-y: auto    !important;   /* vertical scrollbar & sticky header */
+}
+
+/* ── Dependency arrows: thicker stroke & high‑contrast colour ── */
+.pm-dep-arrow {
+  stroke: #000;          /* solid black lines and arrowheads */
+  stroke-width: 1px;
+  opacity: 0.8;
+}
+
+.pm-tl-anchor {
+  position: absolute;
+  background: transparent;
+  pointer-events: none;
+}
+
+/* === Timeline heat-map === */
+.pm-heat-layer {
+  position: absolute;   /* relative to .pm-tl-headwrap */
+  left: 0;
+  right: 0;
+  bottom: 2px;          /* lift the band 2 px off header bottom */
+  height: 15px;         /* one pixel taller again */
+  pointer-events: auto;      /* allow hover */
+  z-index: 100;         /* behind month/day text (header is 150) */
+}
+.pm-heat-cell { 
+  position:absolute; 
+  top:0; 
+  height:100%; 
+  pointer-events: auto;   /* enable hover tooltips */
+}
+
+/* ─── ID-based bar colours ───────────────── */
+.pm-bar-e  { background: var(--pm-bar-e-color)  !important; }
+.pm-bar-s  { background: var(--pm-bar-s-color)  !important; }
+.pm-bar-sb { background: var(--pm-bar-sb-color) !important; }
+
+/* ─── Bold rows for E and S tasks ───────────────── */
+.pm-task-bold {
+  font-weight: bold;
+}
+
+/* ─── Make header backgrounds transparent so heat-map shows through ─── */
+.pm-tl-headwrap,
+.pm-tl-header,
+.pm-tl-monthrow {
+  background: transparent;   /* default transparent; inline style may override */
+}
+
+/* ─── Let pointer events pass through header text so heat‑map gets hover ─── */
+.pm-tl-headwrap * {
+  pointer-events: none !important;   /* header labels ignore mouse, tooltips work */
+}
+/* ── Sticky top header for zoom control ────────────────────────── */
+.pm-tl-topheader {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;     /* slider sits on right */
+  height: 26px;
+  padding: 0 8px;     /* zero top padding centers slider vertically */
+  position: sticky;
+  top: 0;
+  z-index: 160;                  /* above month header (150) */
+  background: var(--background-primary);
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+/* zoom wrap now lives in flex context, no absolute pos needed */
+.pm-tl-topheader .pm-zoom-wrap {
+  position: relative;
+}
+
+.pm-zoom-slider {
+  width: 120px !important;    /* longer track */
+  height: 6px;
+  accent-color: var(--interactive-accent); /* vivid accent */
+  background: var(--background-secondary);
+  border-radius: 3px;
+  margin-top: 0;          /* nudge slider up by 1 px */
+  margin-bottom: 0;      /* remove default vertical margins */
+  vertical-align: middle;
+  align-self: center;    /* ensure flex item is centred */
+}
+
+/* Give the thumb a clear colour */
+.pm-zoom-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  height: 14px;
+  width: 14px;
+  border-radius: 7px;
+  background: var(--interactive-accent);
+  border: 2px solid var(--background-primary);
+  cursor: pointer;
+  margin-top: -1px;
+}
+.pm-zoom-slider::-moz-range-thumb {
+  height: 14px;
+  width: 14px;
+  border-radius: 7px;
+  background: var(--interactive-accent);
+  border: 2px solid var(--background-primary);
+  cursor: pointer;
+  margin-top: -1px;
+}
+
+
+/* ─── Header fallback background when heat‑map is disabled ─── */
+/* ─── Extra spacing around header icons for easier clicking ─── */
+.pm-tl-tasktoggle {
+  margin-left: 8px;     /* gap after “Project” label */
+  margin-right: 6px;
+  cursor: pointer;
+}
+
+.pm-fold-all-caret {    /* plus‑square / minus‑square icon */
+  margin-left: 8px;     /* gap after task‑toggle icon */
+  cursor: pointer;
+}
+
+.pm-fold-caret {        /* per‑project chevron icon */
+  margin-right: 6px;    /* gap before project name */
+  cursor: pointer;
+}
+
+/* ─── Header icons inherit theme colour ─── */
+
+.pm-tl-tasktoggle svg,
+.pm-fold-all-caret svg,
+.pm-fold-caret svg {
+  color: var(--interactive-accent);
+  stroke: currentColor;   /* Lucide SVGs use stroke=currentColor */
+}
+
+/* ─── Project header text and icon use the accent colour ─── */
+/* .pm-tl-nameheader {
+  color: var(--interactive-accent);
+} */
+
+.pm-tl-nameheader .pm-fold-all-caret svg {
+  stroke: currentColor;   /* icon inherits the accent colour */
+}
+/* ─── Project‑row label + chevron inherit accent colour ─── */
+.pm-tl-row .pm-tl-label {
+  color: var(--interactive-accent);
+}
+
+/* colour the chevron icon in each project row */
+.pm-tl-row .pm-fold-caret svg {
+  stroke: currentColor;
+  color: var(--interactive-accent);
+}
+/* ─── Task-row labels inherit accent colour ─── */
+.pm-tl-taskrow,
+.pm-tl-taskrow a,
+.pm-task-line,
+.pm-task-line a {
+  color: var(--interactive-accent) !important;
+}
+
+/* ─── Zoom label inherits theme accent colour ─── */
+.pm-zoom-label {
+  font-size: 12px;
+  color: var(--interactive-accent);
+  stroke: currentColor;
+}
+
+/* ═════════ Real guideline divs (height set in JS) ═════════ */
+.pm-month-line {
+  position: absolute;
+  top: 0;
+  width: 2px;
+  background: var(--interactive-accent);
+  opacity: 0.6;
+  pointer-events: none;
+  z-index: 10000 !important;     /* higher than header and slider */
+}
+
+.pm-weekend-line {
+  position: absolute;
+  top: 0;
+  width: 4px;          /* full day width (pxPerDay) */
+  background: var(--background-modifier-hover, rgba(120,120,120,.12));
+  pointer-events: none;
+  z-index: 1;          /* behind bars */
+}
+
+/* Full‑width horizontal separator: attach to each bar‑wrapper */
+.pm-tl-barwrap {
+  position: relative;                 /* anchor for ::after */
+}
+
+.pm-tl-barwrap::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;                           /* stretches across full bar‑wrap width */
+  bottom: 0;
+  height: 1px;                        
+  background: var(--divider-color);   /* match table/row dividers so tone is uniform */
+  pointer-events: none;
+  z-index: 0;                         /* behind bars */
+}
+/* ════════════════════════════════════════════════════════════════
+   When the heat‑map is OFF, draw a full‑width background band
+   behind the month & day header rows. Uses the same idea as the
+   row separators: a pseudo‑element that stretches across the entire
+   scrollable width.                                             ═════════ */
+.pm-tl-headwrap.no-heatmap {
+  position: relative;               /* anchor for ::before */
+}
+
+.pm-tl-headwrap.no-heatmap::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;                         /* spans full timeline width */
+  top: 0;
+  bottom: 0;                        /* covers both header rows */
+  background: var(--background-primary, var(--background-secondary));
+  pointer-events: none;
+  z-index: 0;                       /* behind header labels (150) & heat‑map (100) */
+}
+
+/* Toggle bar shadows: <html class="pm-no-shadows"> … */
+.pm-no-shadows .pm-tl-bar {
+  --pm-bar-shadow: none;
+}
+/* ─── Project/task text colour: accent in light mode, default in dark ─── */
+.pm-tl-row .pm-tl-label,
+.pm-tl-taskrow,
+.pm-tl-taskrow a,
+.pm-task-line,
+.pm-task-line a {
+  color: var(--interactive-accent);     /* light‑mode accent by default */
+}
+
+/* Override for dark mode: use theme’s normal text colour for readability */
+.theme-dark .pm-tl-row .pm-tl-label,
+.theme-dark .pm-tl-taskrow,
+.theme-dark .pm-tl-taskrow a,
+.theme-dark .pm-task-line,
+.theme-dark .pm-task-line a {
+  color: var(--text-muted) !important;
+}
+
+/* ─── Bar resize handles ─────────────────────────────────────────── */
+.pm-tl-bar .pm-resize-handle {
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.pm-tl-bar:hover .pm-resize-handle {
+  opacity: 0.6;
+  background: var(--interactive-accent);
+}
+
+.pm-resize-handle.left  { border-radius: 2px 0 0 2px; }
+.pm-resize-handle.right { border-radius: 0 2px 2px 0; }
+
+/* ─── Sticky top header for zoom ─── */
+.pm-tl-topheader {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  height: 30px;          /* revert to original height */
+  padding: 0 8px;
+  position: sticky;
+  top: -1px;             /* move header up by 1 px for visual alignment */
+  z-index: 160;
+  background: var(--background-primary);
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+/* Zoom wrap now just sits in the flex row */
+.pm-tl-topheader .pm-zoom-wrap { position: relative; }
+
+/* Controls inside the top header (eye + chevron) */
+.pm-top-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: auto;   /* shove zoom slider to the far right */
+}
+.pm-top-controls svg {
+  color: var(--interactive-accent);
+  stroke: currentColor;
+}
+
+/* Heat-map icon colour + dimming when off */
+.pm-heatmap-toggle svg {
+  color: var(--interactive-accent);
+  stroke: currentColor;
+}
+.pm-heatmap-toggle.off svg {
+  opacity: 0.35;          /* visibly “off” */
+}
+
+/* Move-bars toggle icon in the top header */
+.pm-move-toggle {
+  cursor: pointer;
+}
+.pm-move-toggle svg {
+  color: var(--interactive-accent);
+  stroke: currentColor;
+}
+.pm-move-toggle.off svg {
+  opacity: 0.35;          /* dim when bar-move disabled */
+}
+
+/* Arrows-toggle icon in top header */
+.pm-arrow-toggle {
+  cursor: pointer;
+}
+.pm-arrow-toggle svg {
+  color: var(--interactive-accent);
+  stroke: currentColor;
+}
+.pm-arrow-toggle.off svg {
+  opacity: 0.35;          /* dim when arrows are hidden */
+}
+
+/* Assignee‑labels toggle icon in top header */
+.pm-assignee-toggle {
+  cursor: pointer;
+}
+.pm-assignee-toggle svg {
+  color: var(--interactive-accent);
+  stroke: currentColor;
+}
+.pm-assignee-toggle.off svg {
+  opacity: 0.35;        /* dim when labels hidden */
+}
+
+/* Assignee label shown next to each bar */
+.pm-assignee {
+  font-size: 10px;
+  color: var(--text-muted);
+  pointer-events: none;   /* clicks go through to the bar */
+}
+
+/* Timeline range calendar icons */
+.pm-cal-start,
+.pm-cal-end {
+  cursor: pointer;
+  position: relative;
+  z-index: 7;                    /* above zoomWrap (z-index 6) */
+}
+
+.pm-cal-start svg,
+.pm-cal-end svg {
+  color: var(--interactive-accent);
+  stroke: currentColor;
+}
+
+.pm-cal-label {
+  min-width: 6ch;
+  font-size: 10px;
+  color: var(--interactive-accent);
+  stroke: currentColor;
+  margin-right: 8px;
+}
+
+/* Vertical bar showing “today” */
+.pm-today-line {
+  position: absolute;
+  background: var(--color-red, var(--color-accent, #ff4d4d)); /* tweak as desired */
+  opacity: 0.75;
+  pointer-events: none; /* purely visual */
+  z-index: 10001 !important;      /* above everything else */
+}
+
+/* Project column – truncate long names when the splitter narrows the pane */
+.pm-tl-left .pm-project-name,
+.pm-tl-left .pm-project-header,
+.pm-tl-left .pm-tl-name-text {
+  overflow: hidden;         /* cut off extra text */
+  text-overflow: ellipsis;  /* draw … at the end */
+  white-space: nowrap;      /* keep on a single line */
+  max-width: 100%;          /* shrink with the column */
+}
+
+/* Truncate long project & task names when the splitter narrows the column */
+.pm-tl-label {
+  display: block;          /* make width & overflow work */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+/* Completed-task bars  ──────────────────────────────────────────── */
+/* Use stronger selector (.pm-tl-bar + extra class) and !important   */
+.pm-tl-bar.pm-tl-bar-done {
+  background: var(--pm-bar-done-light, #2ecc71) !important;
+}
+body.theme-dark .pm-tl-bar.pm-tl-bar-done {
+  background: var(--pm-bar-done-dark,  #6fbf3a) !important;
+}
+
+/* ── Milestone guideline lines ──────────────────────────────── */
+.pm-milestone-line {
+  position: absolute;                 /* injected absolutely */
+  background: var(--pm-milestone-line-light, #f9c74f); /* bright yellow fallback */
+  opacity: 0.9;
+  pointer-events: none;               /* don’t block clicks */
+  z-index: 10001 !important;      /* above everything else */
+}
+body.theme-dark .pm-milestone-line {
+  background: var(--pm-milestone-line-dark, #e9bf00);
+}
+
+/* Diamond markers for milestones */
+.pm-milestone-diamond {
+  background: var(--pm-milestone-line-light, #f9c74f);
+}
+body.theme-dark .pm-milestone-diamond {
+  background: var(--pm-milestone-line-dark, #e9bf00);
+}
+
+/* ─── Thin project bracket (no caps) ─────────────────────────── */
+.pm-proj-bracket {
+  background: var(--pm-accent, var(--interactive-accent));
+}
+
+/* Project-level bar (temporary visual to confirm span calc) */
+.pm-proj-bar {
+  background: var(--pm-accent, var(--interactive-accent));
+  opacity: 0.35;                 /* lighter so task bars still pop */
+  border-radius: 2px;
+  z-index: 3;                 /* higher than task bars (z-index 2) */
+}
+
+.resources-view td.pm-status-cell {
+  flex: 0 0 auto;
+  width: 80px !important;
+  max-width: 80px !important;
+  min-width: 80px !important;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.resources-view td.pm-status-cell .pm-status-wrapper {
+  display: flex;
+  align-items: center;
+}
+
+.resources-view .pm-status-cell-wrapper,
+.task-weeks-view .pm-status-cell-wrapper {
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+  gap: 4px;
+}
+
+.pm-status-wrapper {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.pm-status-cell {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+ 
+.pm-status-btn:hover svg {
+  opacity: 0.8;
+  transform: scale(1.05);
+}

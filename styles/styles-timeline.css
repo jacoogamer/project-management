@@ -1,0 +1,846 @@
+/* ───────── Timeline view styles ───────── */
+
+/* Container that holds the fixed project column + scrollable timeline */
+.pm-tl-outer {
+  display: flex;
+  align-items: flex-start;
+  position: relative;      /* context for absolute splitter */
+  width: 100%;
+  height: 100%;            /* fill the Obsidian pane */
+  flex: 1 1 auto;          /* stretch vertically inside view */
+  overflow-y: hidden;      /* each inner pane handles vertical scroll */
+  overflow-x: hidden;      /* lock project column in place */
+}
+
+.pm-tl-left,
+.pm-tl-right {
+  height: 100%;            /* makes overflow-y effective */
+}
+
+/* Fixed‑width column for project names */
+.pm-tl-left {
+  position: relative;          /* header anchors inside this column */
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow-y: hidden;          /* this column does not scroll itself */
+  padding-top: 26px;           /* space for fixed header height */
+  background: var(--background-primary);
+  z-index: 20;                 /* above bars, below splitter/header */
+}
+
+/* Horizontally scrollable timeline pane */
+.pm-tl-right  {
+  flex: 1 1 auto;
+  overflow-x: auto;
+  position: relative;          /* context for sticky header */
+  display: flex;
+  flex-direction: column;
+}
+
+/* Main timeline stack */
+.pm-timeline {
+  display: flex;
+  flex-direction: column;
+  overflow: visible;           /* let bars extend */
+  position: relative;          /* context for sticky header */
+}
+
+/* ===== Calendar grid for Timeline ===== */
+.pm-tl-header {
+  display: flex;
+  gap: 0;
+  height: 10px;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.pm-tl-daycell {
+  position: relative;
+  flex: 0 0 auto;
+  height: 100%;
+  border-left: 1px solid var(--background-modifier-border);
+}
+
+.pm-tl-month-start {
+  border-left: 2px solid var(--interactive-accent);
+}
+
+.pm-tl-today {
+  border-left: 2px solid var(--color-yellow);
+}
+
+/* Sticky header wrappers and month label row */
+.pm-tl-headwrap {
+  position: sticky;
+  top: 0;
+  z-index: 150;               /* header above bars and arrows */
+  background: var(--background-primary);
+  padding-bottom: 3px;        /* adds 1 px extra space below the header */
+}
+
+.pm-tl-header,
+.pm-tl-monthrow {
+  position: sticky;
+  top: 0;
+  z-index: 150;               /* higher than splitter (120) and arrow layer */
+  background: var(--background-primary);
+}
+
+.pm-tl-monthrow {
+  display: flex;
+  align-items: center;
+  height: 14px;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.pm-tl-month-label {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  font-size: 10px;
+  font-weight: bold;
+  line-height: 12px;
+  padding-left: 2px;                    /* gap for 2‑px bar */
+  color: var(--text-muted);
+  border-left: 1px solid transparent;   /* compensates day grid line */
+}
+
+/* Rows (projects) */
+.pm-tl-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 27px;                          /* +2 px taller row */
+  z-index: 115;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+/* Project labels in left column: match portfolio color scheme */
+.pm-tl-label {
+  color: var(--text-muted) !important;   /* override main styles.css accent color */
+  font-size: var(--font-ui-medium, 1rem); /* medium font size for better readability */
+}
+
+/* Hover row: accent colour */
+.pm-tl-row:hover .pm-tl-label {
+  color: var(--interactive-accent) !important;
+}
+
+/* Task rows (epic, story, subtask): match portfolio color scheme */
+.pm-tl-taskrow,
+.pm-tl-taskrow a,
+.pm-task-line,
+.pm-task-line a {
+  color: var(--text-muted) !important;   /* default: muted text like portfolio */
+  font-size: var(--font-ui-medium, 1rem); /* medium font size for better readability */
+}
+
+/* Hover task rows: accent colour */
+.pm-tl-taskrow:hover,
+.pm-tl-taskrow:hover a,
+.pm-task-line:hover,
+.pm-task-line:hover a {
+  color: var(--interactive-accent) !important;
+}
+
+.pm-tl-label {
+  display: inline-block;
+  padding: 5px 6px 0;
+  flex: 0 0 auto;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 27px;
+  max-width: 100%;
+}
+
+/* Make sure task links inheriting .pm-tl-label also clamp */
+.pm-tl-row .pm-tl-label,
+.pm-tl-taskrow .pm-tl-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+/* Ensure project rows with carets and eye icons don't overflow */
+.pm-tl-row .pm-tl-label {
+  flex: 1;
+  min-width: 0; /* Allow flex item to shrink below content size */
+}
+
+/* Ensure task rows with check icons or bullets don't overflow */
+.pm-tl-taskrow {
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+
+.pm-tl-taskrow .pm-tl-label {
+  flex: 1;
+  min-width: 0; /* Allow flex item to shrink below content size */
+}
+
+/* Prevent container from forcing labels to expand beyond the left pane */
+.pm-tl-left {
+  overflow: hidden; /* already present; reinforce clamping */
+}
+
+/* Project column header */
+.pm-tl-nameheader {
+  padding: 3px 6px 2px;
+  background: var(--background-primary);
+  color: var(--interactive-accent);
+  cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
+
+  position: absolute;
+  top: 0;
+  left: 0;
+
+  z-index: 40;                 /* above bars and arrows */
+  border-bottom: 1px solid var(--background-modifier-border);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Splitter (draggable vertical bar) */
+.pm-tl-splitter {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  width: 6px;
+  cursor: ew-resize;
+  background: var(--background-modifier-border);
+  transition: background 0.1s;
+  z-index: 120;                    /* above arrow layer */
+}
+
+.pm-tl-splitter:hover {
+  background: var(--interactive-accent);
+}
+
+/* === Bars ====================================================== */
+.pm-tl-barwrap {
+  position: relative;                 /* anchor for absolute bars */
+  flex: 1;
+  height: 27px;                       /* match row height */
+}
+
+.pm-tl-bar {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  left: 0;
+  width: 14px;
+  height: 20px;
+  background: var(--pm-accent);
+  border-radius: 2px;
+  z-index: 2;
+  box-shadow: var(--pm-bar-shadow, 0 0 4px rgba(0,0,0,.25));
+}
+
+.pm-tl-bar:hover {
+  outline: 1px solid var(--interactive-accent);
+}
+
+/* Completed‑task bars */
+.pm-tl-bar.pm-tl-bar-done {
+  background: var(--pm-bar-done-light, #2ecc71) !important;
+}
+body.theme-dark .pm-tl-bar.pm-tl-bar-done {
+  background: var(--pm-bar-done-dark, #6fbf3a) !important;
+}
+
+/* Bar ID colour overrides */
+.pm-bar-e  { background: var(--pm-bar-e-color)  !important; }
+.pm-bar-s  { background: var(--pm-bar-s-color)  !important; }
+.pm-bar-sb { background: var(--pm-bar-sb-color) !important; }
+
+/* Bold project rows for E / S tasks */
+.pm-task-bold {
+  font-weight: bold;
+}
+
+/* === Dependency arrows ======================================== */
+.pm-arrow-layer {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+  z-index: 150 !important;           /*      above rows/bars, below heat‑map(148) & header(150) */
+}
+
+/* normal dependency arrow appearance */
+.pm-dep-arrow {
+  fill: none;
+  stroke: var(--pm-accent, #000);
+  stroke-width: 1px;
+  opacity: 0.8;
+  vector-effect: non-scaling-stroke; /* keep 1.5 px even when zoomed */
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+/* Make sure dependency arrows are visible even before hover */
+svg .pm-dep-arrow:not(.pm-arrow-hover) {
+  stroke: var(--pm-arrow-normal, var(--text-faint, #686868)) !important;   /* dark grey fallback */
+  opacity: 0.9;              /* slightly stronger than default */
+}
+
+
+/* Right pane scroll tweaks so arrows aren’t clipped */
+.pm-tl-right {
+  overflow-x: visible !important;   /* arrows extend horizontally */
+  overflow-y: auto !important;      /* vertical scroll + sticky header */
+}
+
+/* Anchor divs used to place arrows */
+.pm-tl-anchor {
+  position: absolute;
+  background: transparent;
+  pointer-events: none;
+}
+
+/* === Heat‑map band ============================================ */
+.pm-heat-layer {
+  position: absolute;   /* relative to .pm-tl-headwrap */
+  left: 0;
+  right: 0;
+  bottom: 2px;          /* lift the band slightly */
+  height: 15px;
+  pointer-events: auto;
+  z-index: 100;
+}
+
+.pm-heat-cell {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  pointer-events: auto;
+}
+
+/* Header transparency so heat‑map shows behind */
+.pm-tl-headwrap,
+.pm-tl-header,
+.pm-tl-monthrow {
+  background: transparent;
+}
+
+/* Let heat‑map receive pointer events through header text */
+.pm-tl-headwrap * {
+  pointer-events: none !important;
+}
+
+/* But allow heatmap cells to receive pointer events */
+.pm-tl-headwrap .pm-heat-cell {
+  pointer-events: auto !important;
+}
+
+/* === Zoom slider & top header ================================= */
+.pm-tl-topheader {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  height: 36px;      /* taller bar */
+  line-height: 36px; /* vertically center icons/text */
+  padding: 0 8px;
+  position: sticky;
+  top: 0;
+  z-index: 160;
+  background: var(--background-primary);
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.pm-zoom-slider {
+  width: 120px !important;
+  height: 6px;
+  accent-color: var(--interactive-accent);
+  background: var(--background-secondary);
+  border-radius: 3px;
+}
+
+.pm-zoom-slider::-webkit-slider-thumb,
+.pm-zoom-slider::-moz-range-thumb {
+  -webkit-appearance: none;
+  height: 14px;
+  width: 14px;
+  border-radius: 7px;
+  background: var(--interactive-accent);
+  border: 2px solid var(--background-primary);
+  cursor: pointer;
+}
+
+/* === Control‑panel icons ====================================== */
+.pm-tl-tasktoggle,
+.pm-fold-all-caret,
+.pm-fold-caret,
+.pm-heatmap-toggle,
+.pm-move-toggle,
+.pm-arrow-toggle,
+.pm-assignee-toggle,
+.pm-milestone-toggle,
+.pm-cal-start,
+.pm-cal-end {
+  cursor: pointer;
+}
+
+.pm-tl-tasktoggle svg,
+.pm-fold-all-caret svg,
+.pm-fold-caret svg,
+.pm-heatmap-toggle svg,
+.pm-move-toggle svg,
+.pm-arrow-toggle svg,
+.pm-assignee-toggle svg,
+.pm-milestone-toggle svg,
+.pm-cal-start svg,
+.pm-cal-end svg {
+  stroke: currentColor;
+  color: var(--interactive-accent);
+}
+
+.pm-heatmap-toggle.off svg,
+.pm-move-toggle.off svg,
+.pm-arrow-toggle.off svg,
+.pm-assignee-toggle.off svg {
+  opacity: 0.35;  /* visibly “off” */
+}
+
+/* Milestone toggle off state */
+.pm-milestone-toggle.off svg {
+  opacity: 0.35;  /* visibly "off" */
+}
+
+/* Assignee label on bars */
+.pm-assignee {
+  font-size: 10px;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+/* Date range labels */
+.pm-cal-label {
+  min-width: 6ch;
+  font-size: 10px;
+  color: var(--interactive-accent);
+  margin-right: 8px;
+}
+
+/* Today guideline */
+.pm-today-line {
+  position: absolute;
+  background: var(--color-red, #ff4d4d);
+  opacity: 0.75;
+  pointer-events: none;
+  z-index: 10001;
+}
+
+/* Month guideline (divs inserted from JS) */
+.pm-month-line {
+  position: absolute;
+  top: 0;
+  width: 2px;
+  background: var(--interactive-accent);
+  opacity: 0.6;
+  pointer-events: none;
+  z-index: 10000;
+}
+
+/* Weekend shading */
+.pm-weekend-line {
+  position: absolute;
+  top: 0;
+  width: 4px;
+  background: var(--background-modifier-hover, rgba(120,120,120,.12));
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Full‑width row separators (pseudo‑element on bar‑wrap) */
+.pm-tl-barwrap::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: var(--divider-color);
+  pointer-events: none;
+  z-index: 0;       /* behind bars */
+}
+
+/* Project brackets / bars */
+.pm-proj-bracket,
+.pm-proj-bar {
+  background: var(--pm-accent);
+}
+
+.pm-proj-bar {
+  opacity: 0.35;   /* lighter so task bars still pop */
+  border-radius: 2px;
+  z-index: 3;      /* above task bars */
+}
+
+/* Milestone guideline */
+.pm-milestone-line {
+  position: absolute;
+  background: var(--pm-milestone-line-light, #f9c74f);
+  opacity: 0.9;
+  pointer-events: none;
+  z-index: 10001;
+}
+body.theme-dark .pm-milestone-line {
+  background: var(--pm-milestone-line-dark, #e9bf00);
+}
+
+/* ── Single‑project view: trim project-name label padding ─────────── */
+.single-project .pm-tl-label {
+  padding-top: 0;
+  padding-bottom: 0;
+  line-height: 20px;   /* match the slimmer row height */
+}
+
+/* Single‑project view: shrink all rows (project + tasks) */
+.single-project .pm-tl-row {
+  height: 20px;
+  line-height: 20px;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.single-project .pm-tl-row .pm-tl-barwrap {
+  height: 20px;
+}
+
+
+/* FINAL override — single‑project view: clamp every row in both panes */
+.single-project .pm-tl-row {
+  height: 18px !important;
+  line-height: 18px !important;
+  padding: 0 !important;
+}
+
+.single-project .pm-tl-row .pm-tl-barwrap {
+  height: 18px !important;
+}
+
+/* Offset control‑panel icons slightly lower than the zoom slider */
+.pm-tl-topheader .pm-tl-tasktoggle,
+.pm-tl-topheader .pm-fold-all-caret,
+.pm-tl-topheader .pm-move-toggle,
+.pm-tl-topheader .pm-arrow-toggle,
+.pm-tl-topheader .pm-assignee-toggle,
+.pm-tl-topheader .pm-cal-start,
+.pm-tl-topheader .pm-cal-end {
+  margin-top: 4px;    /* shift icons downward */
+}
+
+/* Make zoom slider stick to far right regardless of icon widths */
+.pm-zoom-wrap {
+  margin-left: auto;   /* consumes remaining flex space */
+  display: flex;
+  align-items: center;
+}
+
+.pm-heatmap-toggle {
+  position: absolute;
+  left: calc(var(--pm-tl-splitter, 0px) + 8px);  /* 8-px gap */
+  top: 50%;
+  transform: translateY(-50%);  
+}
+
+/* Adjust spacing and vertical alignment for right-hand icons */
+.pm-top-right {
+  position: relative;        /* remain in flex flow */
+  padding-left: 40px;        /* 20‑px icon + 20‑px gap from flame */
+  display: flex;
+  align-items: center;       /* vertical centre */
+}
+
+.pm-top-right > span:not(.pm-cal-label) {
+  margin-left: 14px;         /* add a touch more space between icons */
+  margin-top: 4px;           /* match vertical offset of left icons */
+}
+
+.pm-tl-left  a,
+.pm-tl-right a,
+.pm-tl-topheader a {
+  color: var(--interactive-accent);
+  text-decoration: none;
+}
+
+.pm-tl-left  a:hover,
+.pm-tl-right a:hover,
+.pm-tl-topheader a:hover {
+  text-decoration: underline;
+}
+
+/* Urgency colours – always override ID-colour rules */
+.pm-bar-warning { background: var(--color-orange) !important; }
+.pm-bar-overdue { background: var(--color-red)    !important; }
+
+/* ── Full‑width divider below the fixed project header ──────────────── */
+.pm-tl-headwrap::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: var(--background-modifier-border);
+  pointer-events: none;
+  z-index: 145; /* below header (150) but above bars/arrows */
+}
+/* Fine-tune the check icon that replaces the bullet */
+.pm-task-check svg {
+  width: 0.9em;      /* slightly smaller than text */
+  height: 0.9em;
+  vertical-align: text-bottom;  /* lines up with text baseline */
+}
+
+/* ── Hover tooltip for project metadata ───────────────────────────── */
+.pm-tl-tooltip{
+  position: fixed;
+  max-width: 260px;
+  background: var(--background-primary);
+  border: 1px solid var(--divider-color);
+  box-shadow: 0 2px 4px rgba(0,0,0,.15);
+  padding: 6px 8px;
+  font-size: 0.85rem;
+  border-radius: 4px;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+.pm-tl-tooltip strong{ font-weight: 600; }
+.pm-tl-tooltip em{ font-style: italic; }
+
+/* --- keep project rows 27 px tall in collapsed / bars-only modes --- */
+.pm-tl-left > .pm-tl-row {
+  height: 27px !important;       /* same as barWrap/task rows */
+  line-height: 27px !important;  /* keeps text single-line */
+  display: flex;                 /* caret + label on one row */
+  align-items: center;           /* vertical centering */
+}
+/* --- clamp left-pane rows to 27 px, killing stray padding that appears
+       after collapse/expand on projects without sub-tasks -------------- */
+.pm-tl-left .pm-tl-row {
+  height: 27px !important;
+  line-height: 27px !important;
+  padding: 0 !important;      /* remove stray top/bottom padding */
+  box-sizing: border-box;     /* honour explicit height even if border present */
+}
+
+/* --- Ensure left‑pane labels never add extra vertical padding --- */
+.pm-tl-left .pm-tl-label {
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  line-height: 27px !important;   /* keep text centered in 27‑px row */
+}
+
+/* --- keep every task row (Epic / Story / SB) 27 px tall ------------------ */
+.pm-tl-taskrow {
+  height: 27px !important;
+  line-height: 27px !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  padding-left: 16px;         /* indent bullet from the column edge */
+  display: flex;
+  align-items: center;        /* vertical‑centre contents */
+}
+
+/* Hide only the bars—not the entire row—when pm-hide-bars is present */
+.pm-hide-bars .pm-tl-bar,
+.pm-hide-bars .pm-proj-bar {
+  display: none !important;
+}
+/* Tooltip for project hover in Timeline */
+.pm-dash-tooltip {
+  position: fixed;
+  max-width: 260px;
+  background: var(--background-primary);
+  border: 1px solid var(--divider-color);
+  box-shadow: 0 2px 4px rgba(0 0 0 / 15%);
+  padding: 6px 8px;
+  font-size: 0.85rem;
+  border-radius: 4px;
+  pointer-events: none;
+  z-index: 10000;
+}
+.pm-dash-tooltip strong { font-weight: 600; }
+.pm-dash-tooltip em    { font-style: italic; }
+
+/* Hide assignee labels when a project is hidden via the eye icon */
+.pm-hide-bars .pm-assignee {
+  display: none !important;
+}
+/* Tooltips float above everything but shouldn't catch clicks / drags */
+.pm-dash-tooltip {
+  pointer-events: none;
+}
+/* Project baseline bar (thinner) */
+.pm-proj-baseline {
+  background: #000 !important;   /* solid black */
+  position: relative;            /* anchor pseudo‑wedges */
+  height: 6px;                   /* thinner baseline */
+  box-shadow: none;              /* remove any earlier shadows */
+}
+
+.pm-proj-baseline::before,
+.pm-proj-baseline::after {
+  content: "";
+  position: absolute;
+  top: 100%;          /* anchor at bottom edge of the bar */
+  width: 6px;
+  height: 6px;
+  background: #000;
+  transform: rotate(45deg);
+  margin-top: -3px;   /* show only upper half of the diamond */
+}
+
+/* offset so half the diamond overhangs beyond the bar ends */
+.pm-proj-baseline::before { left: -3px; }
+.pm-proj-baseline::after  { right: -3px; }
+
+/* ==== dependency-arrow hover effect ==== */
+.pm-dep-arrow {
+  transition: stroke-width 0.15s ease, stroke 0.15s ease;
+  pointer-events: visibleStroke;      /* make thin strokes hoverable */
+}
+
+.pm-dep-arrow.pm-arrow-hover {
+  stroke-width: 3px;  /* bold line */
+  stroke: #ff0000 !important;    /* vivid red */
+}
+
+/* === Hovered dependency arrows: red stroke + red arrow-head =============== */
+svg .pm-dep-arrow.pm-arrow-hover {
+  stroke: #d00 !important;        /* bright red for the enlarged line */
+}
+
+/* Ensure the arrow-head matches the line colour */
+svg marker#pmArrowHeadHover path {
+  fill:   #d00 !important;
+  stroke: #d00 !important;
+}
+
+/* Force red color on hover arrowhead */
+#pmArrowHeadHover path {
+  fill: #d00 !important;
+  stroke: #d00 !important;
+}
+
+/* Override fill:none for hover arrowhead specifically */
+#pmArrowHeadHover path.pm-dep-arrow {
+  fill: #d00 !important;
+}
+
+/* Most specific override for hover arrowhead */
+#pmArrowHeadHover path {
+  fill: #d00 !important;
+  stroke: #d00 !important;
+  fill-opacity: 1 !important;
+}
+
+/* Helper to disable selection during drag */
+.pm-noselect {
+  -webkit-user-select: none !important;
+  user-select: none !important;
+}
+
+/* Timeline icons: match portfolio icon color scheme */
+.pm-tl-tasktoggle svg,
+.pm-fold-all-caret svg,
+.pm-fold-caret svg,
+.pm-heatmap-toggle svg,
+.pm-move-toggle svg,
+.pm-arrow-toggle svg,
+.pm-assignee-toggle svg,
+.pm-milestone-toggle svg,
+.pm-cal-start svg,
+.pm-cal-end svg,
+.pm-project-eye svg {
+  stroke: var(--text-muted) !important;
+  color: var(--text-muted) !important;
+}
+
+/* Hover row icons: accent color */
+.pm-tl-row:hover .pm-tl-tasktoggle svg,
+.pm-tl-row:hover .pm-fold-all-caret svg,
+.pm-tl-row:hover .pm-fold-caret svg,
+.pm-tl-row:hover .pm-heatmap-toggle svg,
+.pm-tl-row:hover .pm-move-toggle svg,
+.pm-tl-row:hover .pm-arrow-toggle svg,
+.pm-tl-row:hover .pm-assignee-toggle svg,
+.pm-tl-row:hover .pm-milestone-toggle svg,
+.pm-tl-row:hover .pm-cal-start svg,
+.pm-tl-row:hover .pm-cal-end svg,
+.pm-tl-row:hover .pm-project-eye svg {
+  stroke: var(--interactive-accent) !important;
+  color: var(--interactive-accent) !important;
+}
+
+/* Date picker labels and zoom text: match portfolio color scheme */
+.pm-cal-label,
+.pm-zoom-label {
+  color: var(--text-muted);
+}
+
+/* Project header text: match portfolio color scheme */
+.pm-tl-nameheader {
+  color: var(--text-muted);
+  font-size: var(--font-ui-medium, 1rem); /* medium font size for consistency */
+}
+
+/* Dark mode: make project bar and baseline white */
+body.theme-dark .pm-proj-bar {
+  background: #ffffff !important;
+}
+body.theme-dark .pm-proj-baseline {
+  background: #ffffff !important;
+}
+body.theme-dark .pm-proj-baseline::before,
+body.theme-dark .pm-proj-baseline::after {
+  background: #ffffff !important;
+}
+
+/* Sort icon color: match other icons */
+.pm-top-controls > span svg {
+  color: var(--text-muted);
+  stroke: var(--text-muted);
+}
+
+/* Move sort icon down slightly for better alignment */
+.pm-top-controls > span {
+  margin-top: 2px;
+}
+
+/* === Project row background styling === */
+.pm-tl-row.pm-project-row {
+  background: var(--background-modifier-hover) !important;
+}
+
+/* Hover state for project rows - slightly darker */
+.pm-tl-row.pm-project-row:hover {
+  background: var(--background-modifier-border) !important;
+}
+
+/* Ensure chevron and eye icons are vertically centered in project rows */
+.pm-tl-row .pm-fold-caret,
+.pm-tl-row .pm-project-eye {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+
+.pm-tl-row .pm-fold-caret svg,
+.pm-tl-row .pm-project-eye svg {
+  display: block;
+  vertical-align: middle;
+}

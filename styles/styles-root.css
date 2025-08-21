@@ -1,0 +1,24 @@
+:root {
+  --pm-accent: var(--interactive-accent);
+
+  /* ── Timeline bar colours ── */
+  --pm-bar-e-color-light:  #d9534f;
+  --pm-bar-s-color-light:  #6c757d;
+  --pm-bar-sb-color-light: #5bc0de;
+
+  --pm-bar-e-color-dark:   #ff7670;
+  --pm-bar-s-color-dark:   #adb5bd;
+  --pm-bar-sb-color-dark:  #66d9ef;
+
+  /* Default binding (light mode) */
+  --pm-bar-e-color:  var(--pm-bar-e-color-light);
+  --pm-bar-s-color:  var(--pm-bar-s-color-light);
+  --pm-bar-sb-color: var(--pm-bar-sb-color-light);
+}
+
+/* Dark-theme override: re-bind bar variables to dark palette */
+.theme-dark {
+  --pm-bar-e-color:  var(--pm-bar-e-color-dark);
+  --pm-bar-s-color:  var(--pm-bar-s-color-dark);
+  --pm-bar-sb-color: var(--pm-bar-sb-color-dark);
+}

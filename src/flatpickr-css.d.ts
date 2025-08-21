@@ -1,0 +1,1 @@
+declare module "flatpickr/dist/flatpickr.min.css";

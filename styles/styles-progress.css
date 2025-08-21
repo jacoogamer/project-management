@@ -1,0 +1,272 @@
+/* ───────── Dashboard (Project list) ───────── */
+
+.pm-table {
+  width: 100%;
+  border-collapse: collapse;
+  position: relative;
+}
+
+/* Ensure table container can scroll */
+.pm-table-container {
+  overflow-y: auto;
+  height: calc(100vh - 200px);
+  min-height: 400px;
+}
+
+/* Ensure the view container has proper height */
+.pm-progress-view {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.pm-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--background-primary);
+  border-bottom: 1px solid var(--divider-color);
+}
+
+.pm-table thead th {
+  position: sticky;
+  top: 0;
+  background: var(--background-primary);
+  z-index: 10;
+  text-align: left;
+  vertical-align: top;
+}
+
+.pm-table th,
+.pm-table td {
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--divider-color);
+  text-align: left;
+}
+
+/* Ensure table body has minimum height for sticky headers to work */
+.pm-table tbody {
+  min-height: 200px;
+}
+
+/* Progress bar */
+.pm-progress {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--background-modifier-border);
+  position: relative;
+  top: 0;               /* no vertical shift */
+  margin-bottom: 6px;   /* small gap – label will add its own */
+}
+
+.pm-progress-inner {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--pm-accent);
+}
+
+/* Progress‑bar colour states */
+/* All project progress bars use the green accent */
+.pm-progress-inner.low,
+.pm-progress-inner.medium,
+.pm-progress-inner.high,
+.pm-progress-inner.done {
+  background: var(--color-green);
+}
+
+/* Optional subtle stripes for bars that are not yet complete */
+.pm-progress:not(.done) .pm-progress-inner {
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(255,255,255,.15) 0,
+    rgba(255,255,255,.15) 4px,
+    transparent 4px,
+    transparent 8px
+  );
+}
+
+/* Status-badge pill */
+.pm-badge {
+  padding: 0 6px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+.pm-badge.on-track { background: var(--color-green);  color: var(--background-primary); }
+.pm-badge.at-risk  { background: var(--color-yellow); color: var(--background-primary); }
+.pm-badge.overdue  { background: var(--color-red);    color: var(--background-primary); }
+/*.pm-badge.complete { background: var(--color-lime);   color: var(--background-primary); }*/
+.pm-badge.no-date  { background: var(--background-modifier-border); color: var(--text-muted); }
+.pm-badge.warning   { background: var(--color-orange); color: var(--background-primary); }
+.pm-badge.off-track { background: var(--color-red);    color: var(--background-primary); }
+
+/* Completed badge: use same colour scheme as "On track" */
+.pm-badge.complete{
+  background: #2ecc71;            /* flat green for completed */
+  color: var(--background-primary);
+}
+
+/* Top toolbar above the table */
+.pm-dash-topbar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 6px;
+  font-weight: bold;
+}
+
+/* Dashboard links follow the theme accent colour */
+.pm-table a,
+.pm-dash-topbar a,
+.pm-dashboard a {
+  color: var(--interactive-accent);
+  text-decoration: none;
+}
+.pm-table a:hover,
+.pm-dash-topbar a:hover,
+.pm-dashboard a:hover {
+  text-decoration: underline;
+}
+/* Tweak appearance of the check-circle icon in completed tasks */
+.pm-task-check svg {
+  width: 0.9em;
+  height: 0.9em;
+  vertical-align: text-bottom; /* aligns baseline a touch lower */
+}
+.pm-task-bold { font-weight: bold; }
+
+/* Hover tooltip for task metadata in Dashboard */
+.pm-dash-tooltip{
+  position: fixed;
+  max-width: 260px;
+  background: var(--background-primary);
+  border: 1px solid var(--divider-color);
+  box-shadow: 0 2px 4px rgba(0,0,0,.15);
+  padding: 6px 8px;
+  font-size: 0.85rem;
+  border-radius: 4px;
+  pointer-events: none;
+  z-index: 9999;
+}
+.pm-dash-tooltip strong{ font-weight: 600; }
+.pm-dash-tooltip em{ font-style: italic; }
+
+/* Make the Progress column align to the top of each cell */
+.pm-table td:nth-child(2){
+  vertical-align: top;
+}
+
+/* Bar gap */
+.pm-progress{ margin-bottom: 6px; }
+
+/* Percentage label under each bar */
+.pm-progress-percent{
+  display: block;
+  font-size: 0.65rem;
+  margin-top: 4px;      /* gap under bar */
+  text-align: center;
+}
+
+/* == Dashboard group headers ============================================= */
+.pm-epic-header td {
+  font-weight: 600;
+  padding: 4px 8px;
+  background: none !important;
+}
+
+.pm-story-header td {
+  font-weight: 500;
+  background: var(--background-tertiary);
+  padding: 2px 8px 2px 16px;   /* slight indent under Epic */
+}
+
+/* Project rows background – match Weekly darker grey */
+.pm-progress-view .pm-table tbody tr.pm-project-row td {
+  background: var(--background-modifier-hover) !important;
+}
+.pm-progress-view .pm-table tbody tr.pm-project-row:hover td {
+  background: var(--background-modifier-border) !important;
+}
+
+/* Bold links inside Epic and Story headers */
+.pm-epic-header a,
+.pm-story-header a{
+  font-weight: 600;
+}
+
+/* Project name link should match row text color (not accent) */
+.pm-table td.pm-dash-name a {
+  color: var(--text-normal) !important;
+  text-decoration: none;
+}
+.pm-table td.pm-dash-name a:hover {
+  text-decoration: underline;
+}
+
+/* Dark mode: make all Progress rows use normal text color (including links) */
+body.theme-dark .pm-table th,
+body.theme-dark .pm-table td {
+  color: var(--text-normal) !important;
+}
+body.theme-dark .pm-table a {
+  color: var(--text-normal) !important;
+}
+body.theme-dark .pm-table a:hover {
+  text-decoration: underline;
+}
+
+/* Dark mode handled by the same rules above via theme variables */
+
+/* Ensure epic rows have no background in both light and dark mode */
+body.theme-dark .pm-epic-header td {
+  background: none !important;
+}
+
+/* ── Dropdown check icon styling ─────────────────────────────────── */
+.pm-proj-dd .pm-dd-check {
+  /* Ensure icons are visible in all themes */
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Selected state - use accent color (matching portfolio) */
+.pm-proj-dd .pm-dd-check svg[data-lucide="check-circle"] {
+  color: var(--interactive-accent) !important;
+}
+
+/* Alternative selector for selected state */
+.pm-proj-dd .pm-dd-check[data-checked="true"] svg {
+  color: var(--interactive-accent) !important;
+}
+
+/* Hover state for better visibility */
+.pm-proj-dd .pm-dd-check:hover {
+  color: var(--interactive-accent);
+  transform: scale(1.1);
+}
+
+/* Override for table rows only (not headers or UI elements) */
+.pm-progress-view .pm-table tbody tr td {
+  color: var(--text-muted) !important;
+}
+
+/* Hover override for table rows only */
+.pm-progress-view .pm-table tbody tr:hover td {
+  color: var(--interactive-accent) !important;
+}
+
+/* Ensure links inside task rows follow muted -> accent like Weekly */
+.pm-progress-view .pm-table tbody tr td a {
+  color: var(--text-muted) !important;
+  text-decoration: none;
+}
+
+.pm-progress-view .pm-table tbody tr:hover td a,
+.pm-progress-view .pm-table tbody tr td a:hover {
+  color: var(--interactive-accent) !important;
+  text-decoration: underline;
+}

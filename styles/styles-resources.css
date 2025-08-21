@@ -1,0 +1,581 @@
+/* ───────── Dashboard (Project list) ───────── */
+
+.pm-table {
+  width: 100%;
+  border-collapse: collapse;
+  position: relative;
+}
+
+.pm-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--background-primary);
+  border-bottom: 1px solid var(--divider-color);
+}
+
+.pm-table thead th {
+  position: sticky;
+  top: 0;
+  background: var(--background-primary);
+  z-index: 10;
+  text-align: left;
+  vertical-align: top;
+}
+
+/* Ensure the view container has proper height */
+.pm-resources-view {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Ensure table container can scroll while topbar stays sticky */
+.pm-table-container {
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+.pm-table th,
+.pm-table td {
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--divider-color);
+  text-align: left;
+}
+
+/* Ensure table body has minimum height for sticky headers to work */
+.pm-table tbody {
+  min-height: 200px;
+}
+
+/* Progress bar */
+.pm-progress {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--background-modifier-border);
+  position: relative;
+  top: 0;               /* no vertical shift */
+  margin-bottom: 6px;   /* small gap – label will add its own */
+}
+
+.pm-progress-inner {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--pm-accent);
+}
+
+/* Progress‑bar colour states */
+/* All project progress bars use the green accent */
+.pm-progress-inner.low,
+.pm-progress-inner.medium,
+.pm-progress-inner.high,
+.pm-progress-inner.done {
+  background: var(--color-green);
+}
+
+/* Optional subtle stripes for bars that are not yet complete */
+.pm-progress:not(.done) .pm-progress-inner {
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(255,255,255,.15) 0,
+    rgba(255,255,255,.15) 4px,
+    transparent 4px,
+    transparent 8px
+  );
+}
+
+/* Status-badge pill */
+.pm-badge {
+  padding: 0 6px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+.pm-badge.on-track { background: var(--color-green);  color: var(--background-primary); }
+.pm-badge.at-risk  { background: var(--color-yellow); color: var(--background-primary); }
+.pm-badge.overdue  { background: var(--color-red);    color: var(--background-primary); }
+/*.pm-badge.complete { background: var(--color-lime);   color: var(--background-primary); }*/
+.pm-badge.no-date  { background: var(--background-modifier-border); color: var(--text-normal); }
+.pm-badge.warning   { background: var(--color-orange); color: var(--background-primary); }
+.pm-badge.off-track { background: var(--color-red);    color: var(--background-primary); }
+
+/* Completed badge: use same colour scheme as "On track" */
+.pm-badge.complete{
+  background: #2ecc71;            /* flat green for completed */
+  color: var(--background-primary);
+}
+
+/* Top toolbar above the table */
+.pm-dash-topbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  /* sticky positioning to keep bar at top */
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  padding: 4px 8px;
+  background: var(--background-primary);
+  border-bottom: 1px solid var(--divider-color);
+  margin-bottom: 6px;
+}
+
+/* Dashboard links follow the theme accent colour */
+.pm-table a,
+.pm-dash-topbar a,
+.pm-dashboard a {
+  color: var(--interactive-accent);
+  text-decoration: none;
+}
+.pm-table a:hover,
+.pm-dash-topbar a:hover,
+.pm-dashboard a:hover {
+  text-decoration: underline;
+}
+/* Tweak appearance of the check-circle icon in completed tasks */
+.pm-task-check svg {
+  width: 0.9em;
+  height: 0.9em;
+  vertical-align: text-bottom; /* aligns baseline a touch lower */
+}
+.pm-task-bold { font-weight: bold; }
+
+/* Hover tooltip for task metadata in Dashboard */
+.pm-dash-tooltip{
+  position: fixed;
+  max-width: 260px;
+  background: var(--background-primary);
+  border: 1px solid var(--divider-color);
+  box-shadow: 0 2px 4px rgba(0,0,0,.15);
+  padding: 6px 8px;
+  font-size: 0.85rem;
+  border-radius: 4px;
+  pointer-events: none;
+  z-index: 9999;
+}
+.pm-dash-tooltip strong{ font-weight: 600; }
+.pm-dash-tooltip em{ font-style: italic; }
+
+/* Make the Progress column align to the top of each cell */
+.pm-table td:nth-child(2){
+  vertical-align: top;
+}
+
+/* Bar gap */
+.pm-progress{ margin-bottom: 6px; }
+
+/* Percentage label under each bar */
+.pm-progress-percent{
+  display: block;
+  font-size: 0.65rem;
+  margin-top: 4px;      /* gap under bar */
+  text-align: center;
+}
+.pm-week-row td {
+  background: var(--background-secondary);
+}
+
+
+/* ─── Task Weeks helpers ────────────────────────────────────────── */
+
+/* Red exclamation mark shown when a week has >20 tasks */
+.pm-overload {
+  color: var(--color-red, red);
+  font-weight: 700;
+}
+
+/* Muted colour for Assignee cells */
+.pm-assignee-cell {
+  color: var(--text-muted);
+}
+
+/* Table row text colors: match portfolio color scheme */
+.pm-table tbody tr td {
+  color: var(--text-muted) !important;   /* default: muted text like portfolio */
+  font-size: var(--font-ui-medium, 1rem); /* medium font size for better readability */
+}
+
+/* Hover row: accent colour */
+.pm-table tbody tr:hover td {
+  color: var(--interactive-accent) !important;
+}
+
+/* Task line elements: override main styles.css accent color */
+.pm-task-line,
+.pm-task-line a {
+  color: var(--text-muted) !important;   /* default: muted text like portfolio */
+}
+
+/* Hover task line: accent colour */
+.pm-task-line:hover,
+.pm-task-line:hover a {
+  color: var(--interactive-accent) !important;
+}
+
+/* Override for table rows only (not headers or UI elements) */
+.pm-resources-view .pm-table tbody tr td {
+  color: var(--text-muted) !important;
+}
+
+/* Hover override for table rows only */
+.pm-resources-view .pm-table tbody tr:hover td {
+  color: var(--interactive-accent) !important;
+}
+
+/* Override for topbar elements to use muted color */
+.pm-resources-view .pm-dash-topbar *,
+.pm-resources-view .pm-dash-topbar button,
+.pm-resources-view .pm-dash-topbar input,
+.pm-resources-view .pm-dash-topbar span {
+  color: var(--text-muted) !important;
+}
+
+/* But preserve the view name and icons in the topbar */
+.pm-resources-view .pm-dash-topbar .pm-view-name,
+.pm-resources-view .pm-dash-topbar .pm-toggle-icon {
+  color: var(--text-normal) !important;
+}
+
+/* Resource rows background styling: match portfolio active item color - ONLY for project rows, NOT task rows */
+.pm-resources-view .pm-table tbody tr:not(.pm-task-row) {
+  background: var(--background-modifier-hover) !important;
+}
+
+/* Hover state for resource rows - slightly darker */
+.pm-resources-view .pm-table tbody tr:not(.pm-task-row):hover {
+  background: var(--background-modifier-border) !important;
+}
+
+/* Ensure task rows (epic, story, subtask) have no background */
+.pm-resources-view .pm-table tbody .pm-task-row {
+  background: transparent !important;
+}
+
+.pm-resources-view .pm-table tbody .pm-task-row:hover {
+  background: transparent !important;
+}
+
+/* Override any accent color on task rows to use muted color instead */
+.pm-resources-view .pm-table tbody .pm-task-row td {
+  color: var(--text-muted) !important;
+}
+
+.pm-resources-view .pm-table tbody .pm-task-row:hover td {
+  color: var(--interactive-accent) !important;
+}
+
+/* Nuclear option: override any color inheritance on task text elements */
+.pm-resources-view .pm-table tbody .pm-task-row td *:not(.pm-badge):not(.pm-status-btn):not(.pm-in-progress-dot):not(.pm-on-hold-dot):not(.pm-status-btn svg):not(.pm-status-btn svg *) {
+  color: var(--text-muted) !important;
+}
+
+.pm-resources-view .pm-table tbody .pm-task-row:hover td *:not(.pm-badge):not(.pm-status-btn):not(.pm-in-progress-dot):not(.pm-on-hold-dot):not(.pm-status-btn svg):not(.pm-status-btn svg *) {
+  color: var(--interactive-accent) !important;
+}
+
+
+
+
+
+
+
+/* Compact task rows — rely on theme token so it respects user font scaling */
+/* Match the font size used in the pane header */
+.pm-master-wk tbody tr:not(.pm-week-row) {
+  font-size: var(--font-ui-small, var(--font-small)) !important;
+  line-height: 1.2 !important;
+}
+
+.pm-master-wk tbody tr:not(.pm-week-row) td {
+  padding-block: 2px;             /* keep rows compact */
+}
+
+/* Force every element inside task rows to 11px (or tweak to taste) */
+.pm-master-wk tbody tr:not(.pm-week-row) td,
+.pm-master-wk tbody tr:not(.pm-week-row) td * {
+  font-size: 11px !important;   /* try 10–11px for compact rows */
+  line-height: 1.1 !important;
+}
+
+.pm-master-wk tbody tr:not(.pm-week-row) td {
+  padding-block: 1px !important;
+}
+
+.pm-search-wrap {
+  margin: 4px 0 6px;
+}
+.pm-search-input {
+  width: 200px;
+  padding: 4px 6px;
+  font-size: var(--font-ui-smaller);
+}
+/* --- Tooltip styling for project hover --------------------------------- */
+.pm-dash-tooltip {
+  position: fixed;
+  max-width: 260px;
+  background: var(--background-primary);
+  border: 1px solid var(--divider-color);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, .15);
+  padding: 6px 8px;
+  font-size: 0.85rem;
+  border-radius: 4px;
+  pointer-events: none;
+  z-index: 9999;
+}
+.pm-dash-tooltip strong { font-weight: 600; }
+.pm-dash-tooltip em    { font-style: italic; }
+/* ── Project‑filter dropdown ─────────────────────────────────── */
+.pm-proj-btn {
+  font-size: var(--font-ui-smaller, 0.85rem);
+  margin-left: 8px;
+}
+
+.pm-proj-dd {
+  position: fixed;
+  max-height: 50vh;
+  overflow-y: auto;
+  background: var(--background-primary);
+  border: 1px solid var(--divider-color);
+  box-shadow: 0 2px 6px rgba(0,0,0,.2);
+  padding: 6px 8px;
+  z-index: 10000;
+  min-width: 180px;
+  border-radius: 4px;
+  font-size: var(--font-ui-smaller, 0.85rem);
+}
+
+.pm-proj-dd-ctl {
+  margin-bottom: 4px;
+  font-weight: 600;
+  text-align: right;
+}
+
+.pm-proj-dd-ctl a {
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.pm-proj-dd-item {
+  display: block;
+  white-space: nowrap;
+  cursor: pointer;
+  line-height: 1.4;
+}
+
+.pm-proj-dd-item input {
+  margin-right: 4px;
+}
+.pm-proj-dd-item input {
+  margin-right: 4px;
+}
+
+/* ── Resources View (Task‑view style) ────────────────────────── */
+
+/* Sticky header bar */
+.pm-res-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  background: var(--background-secondary);
+  border-bottom: 1px solid var(--divider-color);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+.pm-res-head h2 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+/* Scrollable content under the header */
+.pm-res-scroll {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 0 8px 8px;
+}
+
+/* Collapsible blocks (People / Teams) */
+.pm-res-block {
+  margin-top: 10px;
+}
+.pm-res-block > summary {
+  cursor: pointer;
+  font-weight: 600;
+  padding: 4px 0;
+}
+
+/* Tables reuse dashboard style, but narrower padding */
+.pm-res-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: var(--font-ui-small, 0.9rem);
+}
+.pm-res-table tr:nth-child(even) {
+  background: var(--background-secondary-alt);
+}
+.pm-res-table td {
+  padding: 4px 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pm-res-table td.cap {
+  text-align: right;
+  font-family: var(--font-code);
+}
+.pm-res-table td.skills {
+  color: var(--text-muted);
+}
+.pm-picker {
+  position: absolute;
+  z-index: 9999;
+  background: var(--background-primary);
+  border: 1px solid var(--divider-color);
+  box-shadow: 0 2px 4px rgba(0,0,0,.15);
+  padding: 0 8px;
+  min-width: 180px;
+  max-height: 60vh;     /* keep within 60 % of viewport height */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;         /* scrolling handled by inner list */
+}
+
+.pm-picker-item {
+  padding: 4px 8px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.pm-picker-item:hover {
+  background: var(--background-modifier-hover);
+}
+
+/* ── Picker header/title ───────────────────────────────────────────── */
+.pm-picker-title {
+  position: sticky;       /* stays fixed when the list scrolls */
+  top: 0;
+  background: var(--background-primary);
+  font-weight: 600;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--divider-color);
+  z-index: 1;             /* above list items */
+}
+
+/* Extra padding for the list body */
+.pm-picker-body {
+  padding: 4px 0;
+}
+
+/* ── Picker layout ─────────────────────────── */
+.pm-picker-list {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  margin-bottom: 4px;
+}
+
+.pm-picker-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid var(--divider-color);
+  padding: 4px 0;
+}
+
+.pm-picker-footer .pm-btn {
+  cursor: pointer;
+  margin-left: 8px;
+}
+
+/* highlight selected person */
+.pm-picker-item.selected {
+  background: var(--background-secondary);
+}
+
+.pm-table td:nth-child(3){
+  vertical-align: top;
+  padding: 8px 8px;  /* Increase padding for more consistent height */
+}
+
+.pm-table td:nth-child(1){
+  vertical-align: top;
+}
+
+/* ── Dropdown check icon styling ─────────────────────────────────── */
+.pm-proj-dd .pm-dd-check {
+  /* Ensure icons are visible in all themes */
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Selected state - use accent color (matching portfolio) */
+.pm-proj-dd .pm-dd-check svg[data-lucide="check-circle"] {
+  color: var(--interactive-accent) !important;
+}
+
+/* Alternative selector for selected state */
+.pm-proj-dd .pm-dd-check[data-checked="true"] svg {
+  color: var(--interactive-accent) !important;
+}
+
+/* Hover state for better visibility */
+.pm-proj-dd .pm-dd-check:hover {
+  color: var(--interactive-accent);
+  transform: scale(1.1);
+}
+
+/* ── Project Divider Styling ───────────────────────────────────────────── */
+.pm-project-divider {
+  background: var(--background-secondary-alt);
+}
+
+.pm-project-divider-cell {
+  padding: 8px 12px !important;
+  border-bottom: 1px solid var(--divider-color);
+}
+
+.pm-project-divider-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-left: 12px;
+}
+
+.pm-project-divider-text {
+  font-weight: 600;
+  color: var(--text-normal);
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.pm-project-divider-line {
+  flex: 1;
+  height: 1px;
+  background: var(--divider-color);
+  margin-left: 8px;
+}
+
+.pm-project-chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  color: var(--icon-color);
+  transition: color 0.2s ease;
+}
+
+.pm-project-chevron:hover {
+  color: var(--icon-color-hover);
+}
+
+.pm-project-divider:hover {
+  background: var(--background-modifier-hover);
+}
