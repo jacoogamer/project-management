@@ -7,8 +7,22 @@ import {
 import { TFile } from "obsidian";
 /* Moment.js is available globally in Obsidian */
 declare const moment: any;
-import { ProjectCache } from "../services/cache";
+import { ProjectCache, TaskItem, ProjectEntry } from "../services/cache";
 import { PmSettings } from "../../settings";
+
+// Extended task interface for today view functions
+interface ExtendedTaskItem extends TaskItem {
+  done?: boolean | string;
+  percentComplete?: number;
+  raw?: string;
+  priority?: string;
+  start?: string;
+  due?: string;
+  projectName?: string;
+  projectPath?: string;
+  assignee?: string;
+  owner?: string;
+}
 
 // Load today-specific stylesheet
 import "../../styles/styles-today.css";
@@ -20,7 +34,7 @@ function formatDate(d: string | number | Date | undefined): string {
 }
 
 /** Detect whether a task is completed */
-function isTaskCompleted(t: any): boolean {
+function isTaskCompleted(t: ExtendedTaskItem): boolean {
   /* explicit flags from parsers */
   if (t.done === true || t.checked === true) return true;
   if (typeof t.done === "string" && t.done.toLowerCase() === "completed") return true;
@@ -45,7 +59,7 @@ function isTaskCompleted(t: any): boolean {
 }
 
 /** Get task priority level */
-function getTaskPriority(task: any): 'high' | 'medium' | 'low' | 'none' {
+function getTaskPriority(task: ExtendedTaskItem): 'high' | 'medium' | 'low' | 'none' {
   // Check explicit priority fields
   if (task.priority) {
     const p = task.priority.toString().toLowerCase();
@@ -72,7 +86,7 @@ function getTaskPriority(task: any): 'high' | 'medium' | 'low' | 'none' {
 }
 
 /** Check if task is due today or overdue */
-function isTaskDueToday(task: any, testDate?: string): boolean {
+function isTaskDueToday(task: ExtendedTaskItem, testDate?: string): boolean {
   // Use test date if provided, otherwise use current date
   const today = testDate ? moment(testDate).startOf('day') : moment().startOf('day');
   
@@ -92,7 +106,7 @@ function isTaskDueToday(task: any, testDate?: string): boolean {
 }
 
 /** Check if task should be started (start date is today or in the past) */
-function shouldTaskBeStarted(task: any, testDate?: string): boolean {
+function shouldTaskBeStarted(task: ExtendedTaskItem, testDate?: string): boolean {
   // Use test date if provided, otherwise use current date
   const today = testDate ? moment(testDate).startOf('day') : moment().startOf('day');
   
@@ -112,7 +126,7 @@ function shouldTaskBeStarted(task: any, testDate?: string): boolean {
 }
 
 /** Get days until start (negative if start date has passed) */
-function getDaysUntilStart(task: any, testDate?: string): number {
+function getDaysUntilStart(task: ExtendedTaskItem, testDate?: string): number {
   // Use test date if provided, otherwise use current date
   const today = testDate ? moment(testDate).startOf('day') : moment().startOf('day');
   
@@ -132,7 +146,7 @@ function getDaysUntilStart(task: any, testDate?: string): number {
 }
 
 /** Check if task is overdue */
-function isTaskOverdue(task: any, testDate?: string): boolean {
+function isTaskOverdue(task: ExtendedTaskItem, testDate?: string): boolean {
   // Use test date if provided, otherwise use current date
   const today = testDate ? moment(testDate).startOf('day') : moment().startOf('day');
   
@@ -152,7 +166,7 @@ function isTaskOverdue(task: any, testDate?: string): boolean {
 }
 
 /** Get days until due (negative if overdue) */
-function getDaysUntilDue(task: any, testDate?: string): number {
+function getDaysUntilDue(task: ExtendedTaskItem, testDate?: string): number {
   // Use test date if provided, otherwise use current date
   const today = testDate ? moment(testDate).startOf('day') : moment().startOf('day');
   
@@ -220,15 +234,16 @@ export class TodayView extends ItemView {
   }
 
   /** Collect all tasks with intelligent recommendations */
-  private collectTodayTasks(): any[] {
-    const allTasks: any[] = [];
+  private collectTodayTasks(): ExtendedTaskItem[] {
+    const allTasks: ExtendedTaskItem[] = [];
     
-    this.cache.projects.forEach((project: any) => {
+    this.cache.projects.forEach((project: ProjectEntry) => {
       // Add project metadata to tasks
-      (project.tasks ?? []).forEach((task: any) => {
-        task.projectName = project.file.basename;
-        task.projectPath = project.file.path;
-        allTasks.push(task);
+      (project.tasks ?? []).forEach((task: TaskItem) => {
+        const extendedTask = task as ExtendedTaskItem;
+        extendedTask.projectName = project.file.basename;
+        extendedTask.projectPath = project.file.path;
+        allTasks.push(extendedTask);
       });
     });
     
@@ -246,7 +261,7 @@ export class TodayView extends ItemView {
   }
 
   /** Calculate intelligent priority score for a task */
-  private calculateTaskScore(task: any): number {
+  private calculateTaskScore(task: ExtendedTaskItem): number {
     let score = 0;
     
     // Priority multiplier
@@ -303,7 +318,7 @@ export class TodayView extends ItemView {
   }
 
   /** Get task type for categorization */
-  private getTaskType(task: any): 'epic' | 'story' | 'subtask' | 'other' {
+  private getTaskType(task: ExtendedTaskItem): 'epic' | 'story' | 'subtask' | 'other' {
     const id = (task.id ?? "").toUpperCase();
     if (id.startsWith("E")) return 'epic';
     if (id.startsWith("S") && !id.startsWith("SB")) return 'story';
@@ -324,7 +339,7 @@ export class TodayView extends ItemView {
   }
 
   /** Get task status for color coding */
-  private getTaskStatus(task: any): 'not-started' | 'in-progress' | 'completed' | 'on-hold' {
+  private getTaskStatus(task: ExtendedTaskItem): 'not-started' | 'in-progress' | 'completed' | 'on-hold' {
     // Check if task is completed
     if (isTaskCompleted(task)) {
       return 'completed';
@@ -408,7 +423,7 @@ export class TodayView extends ItemView {
     let ddOpen = false;
     let ddEl: HTMLElement | null = null;
 
-    const buildDropdown = (projectList: any[]) => {
+    const buildDropdown = (projectList: ProjectEntry[]) => {
       ddEl = document.createElement("div");
       ddEl.className = "pm-proj-dd";
 
@@ -439,14 +454,9 @@ export class TodayView extends ItemView {
       };
 
       // Checkbox list
-      projectList.forEach((p: any) => {
+      projectList.forEach((p: ProjectEntry) => {
         const wrap = ddEl!.createEl("div", { cls: "pm-proj-dd-item" });
         const cb = wrap.createEl("span", { cls: "pm-dd-check" });
-        cb.style.cursor = "pointer";
-        cb.style.marginRight = "8px";
-        cb.style.display = "inline-block";
-        cb.style.width = "16px";
-        cb.style.height = "16px";
         wrap.createSpan({ text: ` ${p.file.basename}` });
 
         const isChecked = !this.filterPaths || this.filterPaths.has(p.file.path);
@@ -499,6 +509,7 @@ export class TodayView extends ItemView {
 
       ddEl.style.left = `${left}px`;
       ddEl.style.top = `${top}px`;
+      ddEl.classList.add("pm-dropdown-positioned");
     };
 
     const closeDropdown = () => {
@@ -709,7 +720,8 @@ export class TodayView extends ItemView {
     if (shouldBeCollapsed) {
       section.addClass("collapsed");
       setIcon(collapseIcon, "chevron-right");
-      taskList.style.display = "none";
+                taskList.classList.add("pm-task-list-hidden");
+          taskList.classList.remove("pm-task-list-visible");
     } else {
       setIcon(collapseIcon, "chevron-down");
     }
@@ -720,12 +732,14 @@ export class TodayView extends ItemView {
       if (isCollapsed) {
         section.removeClass("collapsed");
         setIcon(collapseIcon, "chevron-down");
-        taskList.style.display = "block";
+        taskList.classList.add("pm-task-list-visible");
+        taskList.classList.remove("pm-task-list-hidden");
         this.collapsedSections.delete(title);
       } else {
         section.addClass("collapsed");
         setIcon(collapseIcon, "chevron-right");
-        taskList.style.display = "none";
+        taskList.classList.add("pm-task-list-hidden");
+        taskList.classList.remove("pm-task-list-visible");
         this.collapsedSections.add(title);
       }
     };

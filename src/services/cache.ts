@@ -1,5 +1,6 @@
-import { App, TFile } from "obsidian";
+import { App, TFile, ListItemCache, CachedMetadata } from "obsidian";
 import { PmSettings } from "../../settings";
+import type ProjectManagementPlugin from "../main";
 
 /** One milestone row extracted from a Markdown table */
 export interface Milestone {
@@ -52,7 +53,7 @@ export interface ProjectEntry {
  */
 export class ProjectCache {
   private app: App;
-  private plugin: any; // Reference to the main plugin instance
+  private plugin: ProjectManagementPlugin; // Reference to the main plugin instance
 
   /** Dev‑tools helpers: dumpRows, dumpHeaders */
   public _debug: {
@@ -76,7 +77,7 @@ export class ProjectCache {
   private makeTaskKey(filePath: string, id: string): string {
     return `${filePath.toLowerCase()}::${id.toLowerCase()}`;
   }
-  constructor(app: App, plugin: any) {
+  constructor(app: App, plugin: ProjectManagementPlugin) {
     this.app = app;
     this.plugin = plugin;
 
@@ -88,8 +89,8 @@ export class ProjectCache {
     this._debug = {
       /** Print every pipe‑table row that contains a checkbox bullet */
       dumpRows: async (filePath: string) => {
-        const file = this.app.vault.getAbstractFileByPath(filePath) as TFile;
-        if (!file) return;
+        const file = this.app.vault.getFileByPath(filePath);
+        if (!file || !(file instanceof TFile)) return;
         const lines = (await this.app.vault.read(file)).split("\n");
         lines
           .filter(l => /^\s*\|.*-\s*\[[ xX/]\]/.test(l))
@@ -98,8 +99,8 @@ export class ProjectCache {
 
       /** Show the header cells Obsidian thinks this table has */
       dumpHeaders: async (filePath: string) => {
-        const file = this.app.vault.getAbstractFileByPath(filePath) as TFile;
-        if (!file) return;
+        const file = this.app.vault.getFileByPath(filePath);
+        if (!file || !(file instanceof TFile)) return;
         const lines = (await this.app.vault.read(file)).split("\n");
         const hdr = lines.find(l => /^\s*\|\s*id\s*\|/i.test(l));
         if (!hdr) return;
@@ -461,7 +462,7 @@ fileLines.forEach((line, idx) => {
       const nextLineIdx = task.line + 1;
       let attrLine = lines[nextLineIdx] ?? "";
       propKeys.forEach((k) => {
-        const val = (changes as any)[k];
+        const val = changes[k as keyof typeof changes];
         if (val === undefined) return;
         const regex = new RegExp(`${k}::\\s*[^\\s]+`);
         if (regex.test(attrLine)) {

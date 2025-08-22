@@ -1,5 +1,22 @@
-import { ItemView, WorkspaceLeaf, MarkdownView, moment, setIcon, Notice, Modal, TFile } from "obsidian";
+import { ItemView, WorkspaceLeaf, MarkdownView, moment, setIcon, Notice, Modal, TFile, App } from "obsidian";
 import type { ViewStateResult } from "obsidian";
+import type { ProjectCache, TaskItem, ProjectEntry, Milestone } from "../services/cache";
+import type ProjectManagementPlugin from "../main";
+
+// Extended task interface for timeline view
+interface ExtendedTaskItem extends TaskItem {
+  done?: boolean | string;
+  percentComplete?: number;
+  raw?: string;
+}
+
+// Extended milestone interface for timeline view
+interface ExtendedMilestone extends Milestone {
+  path?: string;
+  filePath?: string;
+  name?: string;
+  description?: string;
+}
 // Load timeline-specific stylesheet
 import "../../styles/styles-timeline.css";
 /** Simple text-input modal for YYYY-MM-DD dates */
@@ -8,7 +25,7 @@ class DatePromptModal extends Modal {
   private current: string;
   private resolve: ((val: string | null) => void) | null = null;
 
-  constructor(app: any, label: string, current: string) {
+  constructor(app: App, label: string, current: string) {
     super(app);
     this.label = label;
     this.current = current ?? "";
@@ -25,13 +42,10 @@ class DatePromptModal extends Modal {
     const { contentEl } = this;
     contentEl.empty();
     contentEl.createEl("h3", { text: `Set ${this.label} date` });
-    const desc = contentEl.createEl("div", { text: "Enter a date (YYYY-MM-DD). Leave blank to clear." });
-    desc.style.marginBottom = "0.7em";
-    const input = contentEl.createEl("input", { type: "text" });
+    const desc = contentEl.createEl("div", { text: "Enter a date (YYYY-MM-DD). Leave blank to clear.", cls: "pm-date-input-desc" });
+    const input = contentEl.createEl("input", { type: "text", cls: "pm-date-input" });
     input.value = this.current;
     input.placeholder = "YYYY-MM-DD";
-    input.style.width = "100%";
-    input.style.marginBottom = "0.7em";
     input.addEventListener("keydown", (e) => {
       if (e.key === "Enter") {
         this.submit(input.value);
@@ -40,10 +54,7 @@ class DatePromptModal extends Modal {
       }
     });
     setTimeout(() => input.focus(), 50);
-    const btnRow = contentEl.createEl("div");
-    btnRow.style.display = "flex";
-    btnRow.style.gap = "0.5em";
-    btnRow.style.justifyContent = "flex-end";
+    const btnRow = contentEl.createEl("div", { cls: "pm-timeline-controls" });
     const okBtn = btnRow.createEl("button", { text: "OK" });
     okBtn.onclick = () => this.submit(input.value);
     const cancelBtn = btnRow.createEl("button", { text: "Cancel" });
@@ -73,8 +84,6 @@ class DatePromptModal extends Modal {
 
 /** Discrete zoom stops (px per day) shown in the slider */
 const ZOOM_STOPS = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
-import type { ProjectCache, TaskItem } from "../services/cache";
-import ProjectManagementPlugin from "../main";
 
 
 /** ── Simple drag context for Alt‑drag bar move or resize ───────────────── */
@@ -122,7 +131,7 @@ export class TimelineView extends ItemView {
   /** Pixels per day — initialised from settings (must be a valid zoom stop) */
   private zoomPxPerDay = (() => {
     const saved =
-      (this.app as any).plugins.plugins["project-management"]?.settings
+      ((this.app as any).plugins.plugins["project-management"] as ProjectManagementPlugin)?.settings
         ?.zoomPxPerDay as number | undefined;
     return ZOOM_STOPS.includes(saved ?? -1) ? saved! : ZOOM_STOPS[1]; // default 4
   })();
@@ -159,7 +168,7 @@ export class TimelineView extends ItemView {
    * leaf.setViewState({...state}) is invoked. Capture `filterProjects`
    * so we can filter the timeline rows.
    */
-  async setState(state: any, result: ViewStateResult): Promise<void> {
+  async setState(state: { filterProjects?: string[]; filterName?: string } | undefined, result: ViewStateResult): Promise<void> {
     if (state?.filterProjects && Array.isArray(state.filterProjects)) {
       this.filterPaths = new Set(state.filterProjects as string[]);
     } else {
@@ -177,7 +186,7 @@ export class TimelineView extends ItemView {
   private get plugin() {
     return (
       this.pluginInst ??
-      (this.app as any).plugins.plugins["project-management"]
+      (this.app as any).plugins.plugins["project-management"] as ProjectManagementPlugin
     );
   }
 
@@ -609,7 +618,7 @@ export class TimelineView extends ItemView {
         .replace(/\.md$/, "");
 
     /** Detect whether a task is completed (same logic as dashboard) */
-    function tlIsTaskDone(t: any): boolean {
+    function tlIsTaskDone(t: ExtendedTaskItem): boolean {
       if (t.done === true || t.checked === true) return true;
       if (typeof t.done === "string" && t.done.toLowerCase() === "done") return true;
       if (typeof t.percentComplete === "number" && t.percentComplete >= 1) return true;
@@ -670,7 +679,7 @@ export class TimelineView extends ItemView {
     // 1️⃣ furthest due‑date month‑end (if any)
     let latestEndDays = 0;
     (() => {
-      let latest: any = null;
+      let latest: moment.Moment | null = null;
       this.cache.tasks.forEach(t => {
         const iso = (t.props["due"] ?? "").replace(/\u00A0/g, " ").trim();
         if (!iso) return;
@@ -990,8 +999,8 @@ export class TimelineView extends ItemView {
     };
 
     /* ---------- tasks ON/OFF toggle button ---------- */
-    const plugin: any =
-      (this.app as any).plugins.plugins["project-management"];
+    const plugin: ProjectManagementPlugin =
+      (this.app as any).plugins.plugins["project-management"] as ProjectManagementPlugin;
 
     const toggleBtn = topControls.createEl("span", { cls: "pm-tl-tasktoggle" });
     const toggleIcon = toggleBtn.createEl("span");
@@ -1162,7 +1171,7 @@ export class TimelineView extends ItemView {
 
     startCal.onclick = async (e) => {
       e.preventDefault();
-      const res = await promptDate("timeline START", this.plugin.settings.timelineStart);
+      const res = await promptDate("timeline START", this.plugin.settings.timelineStart || "");
       if (res === null) return;
       this.plugin.settings.timelineStart = res;
       await this.plugin.saveSettings?.();
@@ -1172,7 +1181,7 @@ export class TimelineView extends ItemView {
     
     endCal.onclick = async (e) => {
       e.preventDefault();
-      const res = await promptDate("timeline END", this.plugin.settings.timelineEnd);
+      const res = await promptDate("timeline END", this.plugin.settings.timelineEnd || "");
       if (res === null) return;
       this.plugin.settings.timelineEnd = res;
       await this.plugin.saveSettings?.();
@@ -1297,7 +1306,7 @@ export class TimelineView extends ItemView {
           const normP = normPath(project.file.path);
 
           (this.plugin?.cache?.milestones ?? [])
-            .filter((m: any) => {
+            .filter((m: ExtendedMilestone) => {
               /* Resolve the milestone's file reference, if any */
               const fileStr: string | undefined =
                 typeof m.file     === "string" && m.file.trim()      ? m.file :
@@ -1310,7 +1319,7 @@ export class TimelineView extends ItemView {
                  – it has no file reference (assumed to belong to this project note). */
               return fileStr ? normPath(fileStr) === normP : true;
             })
-            .forEach((m: any) => {
+            .forEach((m: ExtendedMilestone) => {
               // @ts-ignore callable moment bundled by Obsidian
               const d = (moment as any)(m.date, "YYYY-MM-DD", true);
               if (!d.isValid()) return;
@@ -1410,7 +1419,7 @@ export class TimelineView extends ItemView {
         const showTip = () => {
           const fm: Record<string, any> =
             project.file instanceof TFile
-              ? this.app.metadataCache.getFileCache(project.file as TFile)?.frontmatter ?? {}
+              ? this.app.metadataCache.getFileCache(project.file)?.frontmatter ?? {}
               : {};
 
           const norm = (s: string) => s.replace(/[\s_]+/g, "").toLowerCase();

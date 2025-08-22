@@ -1,8 +1,8 @@
 import { ItemView, WorkspaceLeaf } from "obsidian";
 import type { ViewStateResult } from "obsidian";
-import "../../styles/styles-timeline.css";
 import type { ProjectCache } from "../services/cache";
-import ProjectManagementPlugin from "../main";
+import type ProjectManagementPlugin from "../main";
+import "../../styles/styles-timeline.css";
 export declare const VIEW_TYPE_PM_TIMELINE = "pm-timeline-view";
 /**
  * Basic project Timeline / Gantt view.
@@ -41,7 +41,10 @@ export declare class TimelineView extends ItemView {
      * leaf.setViewState({...state}) is invoked. Capture `filterProjects`
      * so we can filter the timeline rows.
      */
-    setState(state: any, result: ViewStateResult): Promise<void>;
+    setState(state: {
+        filterProjects?: string[];
+        filterName?: string;
+    } | undefined, result: ViewStateResult): Promise<void>;
     /** Handy accessor that falls back to global plugin lookup. */
     private get plugin();
     getViewType(): string;

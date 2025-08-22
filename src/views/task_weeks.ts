@@ -7,8 +7,19 @@ import {
 /* Moment.js is available globally in Obsidian */
 declare const moment: any;
 import type { ViewStateResult } from "obsidian";
-import { ProjectCache } from "../services/cache";
+import { ProjectCache, TaskItem, ProjectEntry } from "../services/cache";
 import { PmSettings } from "../../settings";
+
+// Extended task interface for task weeks view
+interface ExtendedTaskItem extends TaskItem {
+  done?: boolean | string;
+  percentComplete?: number;
+  raw?: string;
+  project?: { file?: { basename?: string } };
+  projectName?: string;
+  _isProjectDivider?: boolean;
+  _projectName?: string;
+}
 
 // Load dashboard-specific stylesheet
 import "../../styles/styles-task-weeks.css";
@@ -73,7 +84,7 @@ function statusTooltip(nextDue?: string, pct = 0): string {
 }
 
 /** Detect whether a task is completed */
-function isTaskDone(t: any): boolean {
+function isTaskDone(t: ExtendedTaskItem): boolean {
   /* explicit flags from parsers */
   if (t.done === true || t.checked === true) return true;
   if (typeof t.done === "string" && t.done.toLowerCase() === "done") return true;
@@ -103,11 +114,11 @@ function isTaskDone(t: any): boolean {
  *   • then Stories (S‑) each followed by their SB‑ sub‑tasks
  *   • anything else afterwards in original order
  */
-function orderTasksDash(tasks: any[]): any[] {
-  const done = new Set<any>();
-  const out: any[] = [];
+function orderTasksDash(tasks: ExtendedTaskItem[]): ExtendedTaskItem[] {
+  const done = new Set<ExtendedTaskItem>();
+  const out: ExtendedTaskItem[] = [];
 
-  const pushWithSubs = (t: any) => {
+  const pushWithSubs = (t: ExtendedTaskItem) => {
     if (done.has(t)) return;
     done.add(t);
     out.push(t);
@@ -184,8 +195,9 @@ export class TaskWeeksView extends ItemView {
   }
 
   /** Called when leaf.setViewState({ state }) is invoked */
-  async setState(state: any, result: ViewStateResult): Promise<void> {
+  async setState(state: { filterProjects?: string[]; filterName?: string } | undefined, result: ViewStateResult): Promise<void> {
     if (
+      state &&
       Array.isArray(state.filterProjects) &&
       state.filterProjects.length > 0
     ) {
@@ -294,9 +306,9 @@ export class TaskWeeksView extends ItemView {
     
     // Get all unique project names from the current data
     const projectNames = new Set<string>();
-    this.cache.projects.forEach((project: any) => {
-      (project as any).tasks?.forEach((task: any) => {
-        const projectName = task.projectName ?? task.project?.file?.basename ?? "Unknown Project";
+    this.cache.projects.forEach((project: ProjectEntry) => {
+      project.tasks?.forEach((task: TaskItem) => {
+        const projectName = project.file.basename ?? "Unknown Project";
         projectNames.add(projectName);
       });
     });
@@ -314,16 +326,16 @@ export class TaskWeeksView extends ItemView {
     }
     
     // Get all unique project names and add them to collapsed set
-    this.cache.projects.forEach((project: any) => {
-      (project as any).tasks?.forEach((task: any) => {
-        const projectName = task.projectName ?? task.project?.file?.basename ?? "Unknown Project";
+    this.cache.projects.forEach((project: ProjectEntry) => {
+      project.tasks?.forEach((task: TaskItem) => {
+        const projectName = project.file.basename ?? "Unknown Project";
         this.collapsedProjects.add(projectName);
       });
     });
   }
 
   /** Toggle task completion status */
-  private async toggleTaskCompletion(task: any, done: boolean): Promise<void> {
+  private async toggleTaskCompletion(task: ExtendedTaskItem, done: boolean): Promise<void> {
     const file = (task as any).file;
     if (!file) return;
 
@@ -592,7 +604,7 @@ export class TaskWeeksView extends ItemView {
     let ddOpen = false;
     let ddEl: HTMLElement | null = null;
 
-    const buildDropdown = (projectList: any[]) => {
+    const buildDropdown = (projectList: ProjectEntry[]) => {
       ddEl = document.createElement("div");
       ddEl.className = "pm-proj-dd";
 
@@ -630,7 +642,7 @@ export class TaskWeeksView extends ItemView {
       };
 
       /* Checkbox list */
-      projectList.forEach((p: any) => {
+      projectList.forEach((p: ProjectEntry) => {
         const wrap = ddEl!.createEl("div", { cls: "pm-proj-dd-item" });
         const cb = wrap.createEl("span", { cls: "pm-dd-check" });
         cb.style.cursor = "pointer";
@@ -767,10 +779,10 @@ export class TaskWeeksView extends ItemView {
 
           /* Assignees only from portfolio projects */
           const port = new Set<string>();
-          this.cache.projects.forEach((p: any) => {
+          this.cache.projects.forEach((p: ProjectEntry) => {
             if (!this.originalPaths!.includes(p.file.path)) return;
-            (p.tasks ?? []).forEach((t: any) => {
-              const a = (t.assignee ?? t.props?.assignee ?? t.owner ?? t.props?.owner ?? "")
+            (p.tasks ?? []).forEach((t: TaskItem) => {
+              const a = (t.props?.assignee ?? t.props?.owner ?? "")
                 .toString()
                 .trim();
               if (a) port.add(a.toLowerCase());
@@ -796,10 +808,10 @@ export class TaskWeeksView extends ItemView {
 
       /* Collect assignees from projects currently visible with the current Project filter */
       const visibleAss = new Set<string>();
-      this.cache.projects.forEach((p: any) => {
+      this.cache.projects.forEach((p: ProjectEntry) => {
         if (this.filterPaths && !this.filterPaths.has(p.file.path)) return;  // only projects in view
-        (p.tasks ?? []).forEach((t: any) => {
-          const a = (t.assignee ?? t.props?.assignee ?? t.owner ?? t.props?.owner ?? "")
+        (p.tasks ?? []).forEach((t: TaskItem) => {
+          const a = (t.props?.assignee ?? t.props?.owner ?? "")
             .toString()
             .trim()
             .toLowerCase();
@@ -895,9 +907,9 @@ export class TaskWeeksView extends ItemView {
 
       /* Build unique assignee list from current cache */
       const uniq = new Set<string>();
-      this.cache.projects.forEach((p: any) => {
-        (p.tasks ?? []).forEach((t: any) => {
-          const a = (t.assignee ?? t.props?.assignee ?? t.owner ?? t.props?.owner ?? "").toString().trim();
+      this.cache.projects.forEach((p: ProjectEntry) => {
+        (p.tasks ?? []).forEach((t: TaskItem) => {
+          const a = (t.props?.assignee ?? t.props?.owner ?? "").toString().trim();
           if (a) uniq.add(a);
         });
       });
@@ -2125,10 +2137,10 @@ export class TaskWeeksView extends ItemView {
             link.addEventListener("mouseenter", () => {
               /* Front‑matter: prefer full file cache (if TFile is ready),
                  else fall back to path cache.                                   */
-              const tFile = this.app.vault.getAbstractFileByPath(t.projectPath);
+              const tFile = this.app.vault.getFileByPath(t.projectPath);
               const fm: Record<string, any> =
                 (tFile instanceof TFile
-                  ? this.app.metadataCache.getFileCache(tFile as TFile)?.frontmatter
+                  ? this.app.metadataCache.getFileCache(tFile)?.frontmatter
                   : undefined) ??
                 this.app.metadataCache.getCache(t.projectPath)?.frontmatter ??
                 {};

@@ -1,4 +1,4 @@
-import { Plugin, WorkspaceLeaf, TFile, TFolder, Notice } from "obsidian";
+import { Plugin, WorkspaceLeaf, TFile, TFolder, Notice, Menu, MenuItem } from "obsidian";
 import { ProjectProgressView, VIEW_TYPE_PM_PROGRESS } from "./views/progress";
 import { TimelineView, VIEW_TYPE_PM_TIMELINE } from "./views/timeline";
 import { PortfolioView, VIEW_TYPE_PM_PORTFOLIO } from "./views/portfolio";
@@ -47,7 +47,7 @@ export default class ProjectManagementPlugin extends Plugin {
     });
     this.addCommand({
       id: "open-portfolio-configurator",
-      name: "Open Project Management",
+      name: "Open Projects",
       callback: () => this.activatePortfolio(),
     });
     this.addCommand({
@@ -127,13 +127,13 @@ export default class ProjectManagementPlugin extends Plugin {
 
     /* Right‑click: create Project Note in selected folder */
     this.registerEvent(
-      this.app.workspace.on("file-menu", (menu: any, file: any) => {
+      (this.app.workspace as any).on("file-menu", (menu: Menu, file: TFile | TFolder) => {
         if (file && file.constructor?.name === "TFolder") {
-          menu.addItem((item: any) =>
+          menu.addItem((item: MenuItem) =>
             item
               .setTitle("New Project Note here")
               .setIcon("document-plus")
-              .onClick(() => (newProject as any)(this.app, file as TFolder))
+              .onClick(() => newProject(this.app, file as TFolder))
           );
         }
       })
@@ -143,28 +143,28 @@ export default class ProjectManagementPlugin extends Plugin {
     this.addSettingTab(new PmSettingsTab(this.app, this));
 
     // Listen for Alt‑drag reschedule events from Timeline
-    this.registerDomEvent(document as any, "pm-bar-moved" as any, (e: any) => {
+    this.registerDomEvent(document, "pm-bar-moved" as keyof HTMLElementEventMap, (e: Event) => {
       const ev = e as CustomEvent<{ taskKey: string; deltaDays: number }>;
       if (ev?.detail) this.handleBarMove(ev.detail.taskKey, ev.detail.deltaDays);
     });
 
     // Listen for resize‑edge events from Timeline
-    this.registerDomEvent(document as any, "pm-bar-resized" as any, (e: any) => {
+    this.registerDomEvent(document, "pm-bar-resized" as keyof HTMLElementEventMap, (e: Event) => {
       const ev = e as CustomEvent<{ taskKey: string; deltaStart: number; deltaDue: number }>;
       if (ev?.detail) this.handleBarResize(ev.detail.taskKey, ev.detail.deltaStart, ev.detail.deltaDue);
     });
 
     /* Listen for project‑bar drags (shift Start/End dates in YAML) */
-    this.registerDomEvent(document as any, "pm-project-bar-moved" as any, async (e: any) => {
+    this.registerDomEvent(document, "pm-project-bar-moved" as keyof HTMLElementEventMap, async (e: Event) => {
       const ev = e as CustomEvent<{ projectPath: string; deltaDays: number }>;
       if (!ev?.detail) return;
       const { projectPath, deltaDays } = ev.detail;
       if (!projectPath || !Number.isInteger(deltaDays) || deltaDays === 0) return;
 
-      const file = this.app.vault.getAbstractFileByPath(projectPath);
+      const file = this.app.vault.getFileByPath(projectPath);
       if (!(file && file instanceof TFile)) return;
 
-      const raw = await this.app.vault.read(file as TFile);
+      const raw = await this.app.vault.read(file);
       const fmMatch = raw.match(/^---\n([\s\S]*?)\n---\n/);
       if (!fmMatch) return;                     // no front‑matter
 
@@ -190,7 +190,7 @@ export default class ProjectManagementPlugin extends Plugin {
       blockLines[idxE] = blockLines[idxE].replace(/:\s*.*/, `: ${shift(getISO(idxE))}`);
 
       const newRaw = raw.replace(fmMatch[0], `---\n${blockLines.join("\n")}\n---\n`);
-      await this.app.vault.modify(file as TFile, newRaw);
+      await this.app.vault.modify(file, newRaw);
 
       //new Notice(`Moved project by ${deltaDays} day${deltaDays===1?"":"s"}.`);
 
@@ -199,16 +199,16 @@ export default class ProjectManagementPlugin extends Plugin {
     });
 
     /* Listen for project‑bar resize (shift only Start or End) */
-    this.registerDomEvent(document as any, "pm-project-bar-resized" as any, async (e: any) => {
+    this.registerDomEvent(document, "pm-project-bar-resized" as keyof HTMLElementEventMap, async (e: Event) => {
       const ev = e as CustomEvent<{ projectPath: string; deltaStart: number; deltaEnd: number }>;
       if (!ev?.detail) return;
       const { projectPath, deltaStart, deltaEnd } = ev.detail;
       if (!projectPath || (!deltaStart && !deltaEnd)) return;
 
-      const file = this.app.vault.getAbstractFileByPath(projectPath);
+      const file = this.app.vault.getFileByPath(projectPath);
       if (!(file && file instanceof TFile)) return;
 
-      const raw = await this.app.vault.read(file as TFile);
+      const raw = await this.app.vault.read(file);
       const fmMatch = raw.match(/^---\n([\s\S]*?)\n---\n/);
       if (!fmMatch) return;
 
@@ -229,7 +229,7 @@ export default class ProjectManagementPlugin extends Plugin {
       if (deltaEnd)   lines[iE] = lines[iE].replace(/:\s*.*/, `: ${fmt(iso(iE), deltaEnd)}`);
 
       const newRaw = raw.replace(fmMatch[0], `---\n${lines.join("\n")}\n---\n`);
-      await this.app.vault.modify(file as TFile, newRaw);
+      await this.app.vault.modify(file, newRaw);
       await this.cache.reindex();
     });
   }
@@ -312,17 +312,17 @@ export default class ProjectManagementPlugin extends Plugin {
   }
 
   async loadSettings() {
-    const saved: any = (await this.loadData()) || {};
-    const migrated: any = { ...DEFAULT_SETTINGS, ...saved };
+    const saved: Partial<PmSettings> = (await this.loadData()) || {};
+    const migrated: PmSettings = { ...DEFAULT_SETTINGS, ...saved };
 
     // Backward-compat: migrate old Dashboard keys to Progress
     if (Object.prototype.hasOwnProperty.call(saved, "showDashboardRibbon")
         && !Object.prototype.hasOwnProperty.call(saved, "showProgressRibbon")) {
-      migrated.showProgressRibbon = !!saved.showDashboardRibbon;
+      migrated.showProgressRibbon = !!(saved as any).showDashboardRibbon;
     }
     if (Object.prototype.hasOwnProperty.call(saved, "reuseDashboardPane")
         && !Object.prototype.hasOwnProperty.call(saved, "reuseProgressPane")) {
-      migrated.reuseProgressPane = !!saved.reuseDashboardPane;
+      migrated.reuseProgressPane = !!(saved as any).reuseDashboardPane;
     }
 
     this.settings = migrated as PmSettings;
@@ -392,10 +392,10 @@ export default class ProjectManagementPlugin extends Plugin {
   /** Shift the inline `start::` / `due::` properties on the specific task line. */
   private async handleBarMove(taskKey: string, deltaDays: number) {
     const [filePath, taskId] = taskKey.split("::");
-    const file = this.app.vault.getAbstractFileByPath(filePath);
+    const file = this.app.vault.getFileByPath(filePath);
     if (!file || !(file instanceof TFile)) return;
 
-    const raw = await this.app.vault.read(file as TFile);
+    const raw = await this.app.vault.read(file);
     const lines = raw.split("\n");
     const momentFn = (window as any).moment;
     const isoRE   = /\d{4}-\d{2}-\d{2}/;
@@ -440,7 +440,7 @@ export default class ProjectManagementPlugin extends Plugin {
 
     if (!changed) return;
 
-    await this.app.vault.modify(file as TFile, lines.join("\n"));
+    await this.app.vault.modify(file, lines.join("\n"));
     await this.cache.reindex();
   }
 
@@ -449,10 +449,10 @@ export default class ProjectManagementPlugin extends Plugin {
     if (deltaStart === 0 && deltaDue === 0) return;  // nothing to do
 
     const [filePath, taskId] = taskKey.split("::");
-    const file = this.app.vault.getAbstractFileByPath(filePath);
+    const file = this.app.vault.getFileByPath(filePath);
     if (!file || !(file instanceof TFile)) return;
 
-    const raw   = await this.app.vault.read(file as TFile);
+    const raw   = await this.app.vault.read(file);
     const lines = raw.split("\n");
     const momentFn = (window as any).moment;
 
@@ -484,7 +484,7 @@ export default class ProjectManagementPlugin extends Plugin {
     }
 
     if (!changed) return;
-    await this.app.vault.modify(file as TFile, lines.join("\n"));
+    await this.app.vault.modify(file, lines.join("\n"));
     await this.cache.reindex();
   }
 
@@ -538,7 +538,7 @@ export default class ProjectManagementPlugin extends Plugin {
     }
 
     // Conditionally omit filterProjects if null, so view defaults to "all"
-    const stateObj: any = { filterName };
+    const stateObj: { filterName: string; filterProjects?: string[] } = { filterName };
     if (filterProjects) stateObj.filterProjects = filterProjects;
 
     await leaf.setViewState({
@@ -547,7 +547,7 @@ export default class ProjectManagementPlugin extends Plugin {
       state:  stateObj,
     });
     // If the view is already mounted, update its filter in-place
-    const v: any = leaf.view;
+    const v = leaf.view as ResourcesView;
     if (v?.updateFilter)
       v.updateFilter(filterProjects ?? null, filterName);
     this.app.workspace.revealLeaf(leaf);
@@ -574,7 +574,7 @@ export default class ProjectManagementPlugin extends Plugin {
     }
 
     // Conditionally omit filterProjects if null, so view defaults to "all"
-    const stateObj: any = { filterName };
+    const stateObj: { filterName: string; filterProjects?: string[] } = { filterName };
     if (filterProjects) stateObj.filterProjects = filterProjects;
 
     await leaf.setViewState({
@@ -583,7 +583,7 @@ export default class ProjectManagementPlugin extends Plugin {
       state:  stateObj,
     });
     // If the view is already mounted, update its filter in-place
-    const v: any = leaf.view;
+    const v = leaf.view as DashboardView;
     if (v?.updateFilter)
       v.updateFilter(filterProjects ?? null, filterName);
     this.app.workspace.revealLeaf(leaf);

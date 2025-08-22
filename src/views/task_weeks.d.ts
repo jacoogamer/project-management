@@ -35,7 +35,10 @@ export declare class TaskWeeksView extends ItemView {
     private assigneeFilter;
     constructor(leaf: WorkspaceLeaf, cache: ProjectCache, settings: PmSettings);
     /** Called when leaf.setViewState({ state }) is invoked */
-    setState(state: any, result: ViewStateResult): Promise<void>;
+    setState(state: {
+        filterProjects?: string[];
+        filterName?: string;
+    } | undefined, result: ViewStateResult): Promise<void>;
     /** Update project filter & re-render.
         Pass `null` => show ALL projects.                         */
     updateFilter(paths: string[] | null, name?: string): void;

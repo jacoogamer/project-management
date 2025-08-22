@@ -1,4 +1,5 @@
 import { App, TFile } from "obsidian";
+import type ProjectManagementPlugin from "../main";
 /** One milestone row extracted from a Markdown table */
 export interface Milestone {
     id: string;
@@ -63,7 +64,7 @@ export declare class ProjectCache {
     private listeners;
     /** Compose a unique key from vault‑path + task id (lower‑cased) */
     private makeTaskKey;
-    constructor(app: App, plugin: any);
+    constructor(app: App, plugin: ProjectManagementPlugin);
     /** Subscribe – returns an unsubscribe fn */
     onChange(cb: () => void): () => void;
     private notify;

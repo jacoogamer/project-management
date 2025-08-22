@@ -105,7 +105,7 @@ ${flagKey}: true
       pmPlugin?.settings?.projectTemplate?.trim?.() ?? "";
 
     if (tplPath) {
-      const tplFile = app.vault.getAbstractFileByPath(tplPath);
+      const tplFile = app.vault.getFileByPath(tplPath);
       if (tplFile instanceof TFile) {
         template = await app.vault.cachedRead(tplFile);
 
@@ -123,7 +123,7 @@ ${flagKey}: true
     const dirPath  = targetFolder ? targetFolder.path : "Projects";
     const fullPath = normalizePath(`${dirPath}/${fileName}`);
 
-    const existing = app.vault.getAbstractFileByPath(fullPath);
+    const existing = app.vault.getFileByPath(fullPath);
     if (!existing) {
       file = await app.vault.create(fullPath, template);
     } else if (existing instanceof TFile) {
@@ -133,7 +133,8 @@ ${flagKey}: true
 
     // If file wasn't assigned (shouldn't happen), find it now
     if (!file) {
-      file = app.vault.getAbstractFileByPath(fullPath) as TFile | null;
+      const foundFile = app.vault.getFileByPath(fullPath);
+      file = foundFile instanceof TFile ? foundFile : null;
     }
     if (!file) {
       throw new Error("Failed to create project file");

@@ -74,8 +74,8 @@ class FolderSelectModal extends FuzzySuggestModal<TFolder> {
   }
   getItems(): TFolder[] {
     return this.app.vault.getAllLoadedFiles().filter(
-      (f) => f instanceof TFolder
-    ) as TFolder[];
+      (f): f is TFolder => f instanceof TFolder
+    );
   }
   getItemText(item: TFolder) { return item.path; }
 
@@ -106,11 +106,10 @@ interface PortfolioFile {
 // Store portfolio YAML files in the new sync-friendly folder
 const PORT_DIR = "Portfolios";
 
-const OLD_PORT_DIR = ".obsidian/plugins/project-management/pm";
-
 async function migrateOldPortfolios(app: App) {
   try {
-    const oldPath = normalizePath(OLD_PORT_DIR);
+    // Use vault's config directory instead of hardcoded .obsidian
+    const oldPath = normalizePath(`${app.vault.configDir}/plugins/project-management/pm`);
     const newPath = normalizePath(PORT_DIR);
 
     // Ensure new folder exists
@@ -248,7 +247,7 @@ export class PortfolioView extends ItemView {
         const invalidPaths: string[] = [];
         
         for (const path of projectPaths) {
-          const file = this.app.vault.getAbstractFileByPath(path);
+          const file = this.app.vault.getFileByPath(path);
           if (file && file instanceof TFile) {
             validPaths.push(path);
           } else {
@@ -380,7 +379,7 @@ export class PortfolioView extends ItemView {
       descHeight:    p.descHeight ?? undefined,
     });
     const filePath = `${PORT_DIR}/${p.id}.yml`;
-    const existing = this.app.vault.getAbstractFileByPath(filePath);
+    const existing = this.app.vault.getFileByPath(filePath);
 
     if (existing instanceof TFile) {
       /* Portfolio already indexed by Obsidian — use modify */
@@ -395,11 +394,11 @@ export class PortfolioView extends ItemView {
   /** Delete a portfolio YAML and refresh list */
   private async deletePortfolio(id: string) {
     const filePath = `${PORT_DIR}/${id}.yml`;
-    const file = this.app.vault.getAbstractFileByPath(filePath);
+    const file = this.app.vault.getFileByPath(filePath);
 
     if (file && file instanceof TFile) {
-      // File is indexed by the vault – safe to delete via vault API
-      await this.app.vault.delete(file);
+      // File is indexed by the vault – safe to delete via file manager (respects user preferences)
+      await this.app.fileManager.trashFile(file);
     } else {
       // Not indexed (common for .obsidian folder) – remove via adapter
       try {
@@ -1185,7 +1184,7 @@ export class PortfolioView extends ItemView {
 
     // Type-safe: only use basename if TFile
     const projFile = paths.length === 1
-      ? this.app.vault.getAbstractFileByPath(paths[0])
+      ? this.app.vault.getFileByPath(paths[0])
       : null;
     const projName = projFile instanceof TFile ? projFile.basename : "";
 
@@ -1216,7 +1215,7 @@ export class PortfolioView extends ItemView {
     if (!leaf) leaf = this.app.workspace.splitActiveLeaf("horizontal");
 
     const projFile = paths.length === 1
-      ? this.app.vault.getAbstractFileByPath(paths[0])
+      ? this.app.vault.getFileByPath(paths[0])
       : null;
     const projName = projFile instanceof TFile ? projFile.basename : "";
 
@@ -1272,7 +1271,7 @@ export class PortfolioView extends ItemView {
     if (!leaf) leaf = this.app.workspace.splitActiveLeaf("horizontal");
 
     const projFile = paths.length === 1
-      ? this.app.vault.getAbstractFileByPath(paths[0])
+      ? this.app.vault.getFileByPath(paths[0])
       : null;
     const projName = projFile instanceof TFile ? projFile.basename : "";
 
@@ -1329,7 +1328,7 @@ export class PortfolioView extends ItemView {
     if (!leaf) leaf = this.app.workspace.splitActiveLeaf("horizontal");
 
     const projFile = paths.length === 1
-      ? this.app.vault.getAbstractFileByPath(paths[0])
+      ? this.app.vault.getFileByPath(paths[0])
       : null;
     const projName = projFile instanceof TFile ? projFile.basename : "";
 

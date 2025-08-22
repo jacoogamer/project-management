@@ -10,7 +10,7 @@
     "Review",
     "Done"
   ],
-  "showTasksInTimeline": true,
+  "showTasksInTimeline": false,
   "showArrows": false,
   "showHeatmap": true,
   "showAssignees": true,

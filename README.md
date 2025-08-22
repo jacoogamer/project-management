@@ -80,7 +80,7 @@ A comprehensive project management plugin for Obsidian that helps you organize, 
 Start by opening the Portfolio view and creating a portfolio to organize your projects:
 
 1. Open the command palette (`Ctrl/Cmd + P`)
-2. Search for "Project Management: Open Project Management" and select it, or use the ribbon icon in the left sidebar
+2. Search for "Project Management: Open Projects" and select it, or use the ribbon icon in the left sidebar
 3. Use the "+" button to create your first portfolio
 4. Your portfolio will serve as a container for related projects
 5. You can use the description textarea to add a brief description of the portfolio

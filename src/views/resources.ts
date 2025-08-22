@@ -8,8 +8,15 @@ import { TFile } from "obsidian";
 /* Moment.js is available globally in Obsidian */
 declare const moment: any;
 import type { ViewStateResult } from "obsidian";
-import { ProjectCache } from "../services/cache";
+import { ProjectCache, TaskItem, ProjectEntry } from "../services/cache";
 import { PmSettings } from "../../settings";
+
+// Extended task interface for resources view
+interface ExtendedTaskItem extends TaskItem {
+  done?: boolean | string;
+  percentComplete?: number;
+  raw?: string;
+}
 
 /* ── Minimal in‑memory resource registry (people only) ─────────── */
 interface PersonResource {
@@ -92,7 +99,7 @@ function statusTooltip(nextDue?: string, pct = 0): string {
 }
 
 /** Detect whether a task is completed */
-function isTaskDone(t: any): boolean {
+function isTaskDone(t: ExtendedTaskItem): boolean {
   /* explicit flags from parsers */
   if (t.done === true || t.checked === true) return true;
   if (typeof t.done === "string" && t.done.toLowerCase() === "done") return true;
@@ -122,11 +129,11 @@ function isTaskDone(t: any): boolean {
  *   • then Stories (S‑) each followed by their SB‑ sub‑tasks
  *   • anything else afterwards in original order
  */
-function orderTasksDash(tasks: any[]): any[] {
-  const done = new Set<any>();
-  const out: any[] = [];
+function orderTasksDash(tasks: ExtendedTaskItem[]): ExtendedTaskItem[] {
+  const done = new Set<ExtendedTaskItem>();
+  const out: ExtendedTaskItem[] = [];
 
-  const pushWithSubs = (t: any) => {
+  const pushWithSubs = (t: ExtendedTaskItem) => {
     if (done.has(t)) return;
     done.add(t);
     out.push(t);
@@ -201,8 +208,9 @@ export class ResourcesView extends ItemView {
   }
 
   /** Called when leaf.setViewState({ state }) is invoked */
-  async setState(state: any, result: ViewStateResult): Promise<void> {
+  async setState(state: { filterProjects?: string[]; filterName?: string } | undefined, result: ViewStateResult): Promise<void> {
     if (
+      state &&
       Array.isArray(state.filterProjects) &&
       state.filterProjects.length > 0
     ) {
@@ -293,9 +301,9 @@ export class ResourcesView extends ItemView {
     
     // Get all unique project names from the current data
     const projectNames = new Set<string>();
-    this.cache.projects.forEach((project: any) => {
-      (project as any).tasks?.forEach((task: any) => {
-        const projectName = task.projectName ?? task.project?.file?.basename ?? "Unknown Project";
+    this.cache.projects.forEach((project: ProjectEntry) => {
+      project.tasks?.forEach((task: TaskItem) => {
+        const projectName = project.file.basename ?? "Unknown Project";
         projectNames.add(projectName);
       });
     });
@@ -313,9 +321,9 @@ export class ResourcesView extends ItemView {
     }
     
     // Get all unique project names and add them to collapsed set
-    this.cache.projects.forEach((project: any) => {
-      (project as any).tasks?.forEach((task: any) => {
-        const projectName = task.projectName ?? task.project?.file?.basename ?? "Unknown Project";
+    this.cache.projects.forEach((project: ProjectEntry) => {
+      project.tasks?.forEach((task: TaskItem) => {
+        const projectName = project.file.basename ?? "Unknown Project";
         this.collapsedProjects.add(projectName);
       });
     });
@@ -1777,10 +1785,10 @@ export class ResourcesView extends ItemView {
             };
             let projHover: HTMLElement | null = null;
             link.addEventListener("mouseenter", () => {
-              const tFile = this.app.vault.getAbstractFileByPath(t.projectPath);
+              const tFile = this.app.vault.getFileByPath(t.projectPath);
               const fm: Record<string, any> =
                 (tFile instanceof TFile
-                  ? this.app.metadataCache.getFileCache(tFile as TFile)?.frontmatter
+                  ? this.app.metadataCache.getFileCache(tFile)?.frontmatter
                   : undefined) ??
                 this.app.metadataCache.getCache(t.projectPath)?.frontmatter ??
                 {};
@@ -1978,10 +1986,10 @@ export class ResourcesView extends ItemView {
     if (task.file instanceof TFile) {
       file = task.file;
     } else if (task.file?.path) {
-      const f = this.app.vault.getAbstractFileByPath(task.file.path);
+      const f = this.app.vault.getFileByPath(task.file.path);
       if (f instanceof TFile) file = f;
     } else if (task.projectPath) {
-      const f = this.app.vault.getAbstractFileByPath(task.projectPath);
+      const f = this.app.vault.getFileByPath(task.projectPath);
       if (f instanceof TFile) file = f;
     }
 

@@ -90,6 +90,8 @@ export class DashboardView extends ItemView {
   private originalAssignees: string[] | null = null;
   /** Currently focused chart type (for drill-down view) */
   private focusedChart?: 'status' | 'type' | 'assignee' | 'assignee-status' | 'project';
+  /** Toggle for mini charts: true = bar charts, false = pie charts */
+  private miniChartsAsBars: boolean = false;
 
   private cache: ProjectCache;
   private settings: PmSettings;
@@ -695,39 +697,61 @@ export class DashboardView extends ItemView {
       const statsGrid = projectCard.createEl("div", { cls: "pm-project-stats" });
       
       if (chartType === 'status' || chartType === 'assignee-status') {
-        statsGrid.createEl("div", { cls: "pm-stat-item completed" })
-          .innerHTML = `<strong>Completed:</strong> ${stats.completed}`;
-        statsGrid.createEl("div", { cls: "pm-stat-item in-progress" })
-          .innerHTML = `<strong>In Progress:</strong> ${stats['in-progress']}`;
-        statsGrid.createEl("div", { cls: "pm-stat-item not-started" })
-          .innerHTML = `<strong>Not Started:</strong> ${stats['not-started']}`;
-        statsGrid.createEl("div", { cls: "pm-stat-item on-hold" })
-          .innerHTML = `<strong>On Hold:</strong> ${stats['on-hold']}`;
+        const completedEl = statsGrid.createEl("div", { cls: "pm-stat-item completed" });
+        completedEl.createEl("strong", { text: "Completed: " });
+        completedEl.createEl("span", { text: `${stats.completed}` });
+        
+        const inProgressEl = statsGrid.createEl("div", { cls: "pm-stat-item in-progress" });
+        inProgressEl.createEl("strong", { text: "In Progress: " });
+        inProgressEl.createEl("span", { text: `${stats['in-progress']}` });
+        
+        const notStartedEl = statsGrid.createEl("div", { cls: "pm-stat-item not-started" });
+        notStartedEl.createEl("strong", { text: "Not Started: " });
+        notStartedEl.createEl("span", { text: `${stats['not-started']}` });
+        
+        const onHoldEl = statsGrid.createEl("div", { cls: "pm-stat-item on-hold" });
+        onHoldEl.createEl("strong", { text: "On Hold: " });
+        onHoldEl.createEl("span", { text: `${stats['on-hold']}` });
       } else if (chartType === 'type') {
-        statsGrid.createEl("div", { cls: "pm-stat-item epic" })
-          .innerHTML = `<strong>Epics:</strong> ${stats.epic}`;
-        statsGrid.createEl("div", { cls: "pm-stat-item story" })
-          .innerHTML = `<strong>Stories:</strong> ${stats.story}`;
-        statsGrid.createEl("div", { cls: "pm-stat-item subtask" })
-          .innerHTML = `<strong>Subtasks:</strong> ${stats.subtask}`;
-        statsGrid.createEl("div", { cls: "pm-stat-item other" })
-          .innerHTML = `<strong>Other:</strong> ${stats.other}`;
+        const epicEl = statsGrid.createEl("div", { cls: "pm-stat-item epic" });
+        epicEl.createEl("strong", { text: "Epics: " });
+        epicEl.createEl("span", { text: `${stats.epic}` });
+        
+        const storyEl = statsGrid.createEl("div", { cls: "pm-stat-item story" });
+        storyEl.createEl("strong", { text: "Stories: " });
+        storyEl.createEl("span", { text: `${stats.story}` });
+        
+        const subtaskEl = statsGrid.createEl("div", { cls: "pm-stat-item subtask" });
+        subtaskEl.createEl("strong", { text: "Subtasks: " });
+        subtaskEl.createEl("span", { text: `${stats.subtask}` });
+        
+        const otherEl = statsGrid.createEl("div", { cls: "pm-stat-item other" });
+        otherEl.createEl("strong", { text: "Other: " });
+        otherEl.createEl("span", { text: `${stats.other}` });
       } else {
         // For assignee and project charts, show both status and type
-        statsGrid.createEl("div", { cls: "pm-stat-item completed" })
-          .innerHTML = `<strong>Completed:</strong> ${stats.completed}`;
-        statsGrid.createEl("div", { cls: "pm-stat-item in-progress" })
-          .innerHTML = `<strong>In Progress:</strong> ${stats['in-progress']}`;
-        statsGrid.createEl("div", { cls: "pm-stat-item epic" })
-          .innerHTML = `<strong>Epics:</strong> ${stats.epic}`;
-        statsGrid.createEl("div", { cls: "pm-stat-item story" })
-          .innerHTML = `<strong>Stories:</strong> ${stats.story}`;
+        const completedEl = statsGrid.createEl("div", { cls: "pm-stat-item completed" });
+        completedEl.createEl("strong", { text: "Completed: " });
+        completedEl.createEl("span", { text: `${stats.completed}` });
+        
+        const inProgressEl = statsGrid.createEl("div", { cls: "pm-stat-item in-progress" });
+        inProgressEl.createEl("strong", { text: "In Progress: " });
+        inProgressEl.createEl("span", { text: `${stats['in-progress']}` });
+        
+        const epicEl = statsGrid.createEl("div", { cls: "pm-stat-item epic" });
+        epicEl.createEl("strong", { text: "Epics: " });
+        epicEl.createEl("span", { text: `${stats.epic}` });
+        
+        const storyEl = statsGrid.createEl("div", { cls: "pm-stat-item story" });
+        storyEl.createEl("strong", { text: "Stories: " });
+        storyEl.createEl("span", { text: `${stats.story}` });
       }
       
       // Completion rate
       const completionRate = stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0;
       const rateEl = projectCard.createEl("div", { cls: "pm-completion-rate" });
-      rateEl.innerHTML = `<strong>Completion Rate:</strong> ${completionRate}%`;
+      rateEl.createEl("strong", { text: "Completion Rate: " });
+      rateEl.createEl("span", { text: `${completionRate}%` });
     });
   }
 
@@ -769,7 +793,18 @@ export class DashboardView extends ItemView {
     const sortedAssignees = Array.from(assigneeStats.entries())
       .sort((a, b) => b[1].total - a[1].total);
     
-    // Create mini bar charts for each assignee
+    // Add toggle button for chart type
+    const toggleContainer = container.createEl("div", { cls: "pm-mini-chart-toggle" });
+    const toggleBtn = toggleContainer.createEl("button", { cls: "pm-chart-toggle-btn" });
+    const toggleIcon = toggleBtn.createSpan();
+    setIcon(toggleIcon, this.miniChartsAsBars ? "pie-chart" : "bar-chart-3");
+    toggleBtn.createSpan({ text: this.miniChartsAsBars ? " Switch to Pie Charts" : " Switch to Bar Charts" });
+    toggleBtn.onclick = () => {
+      this.miniChartsAsBars = !this.miniChartsAsBars;
+      this.render(); // Re-render to update all charts
+    };
+    
+    // Create mini charts for each assignee
     const chartsContainer = container.createEl("div", { cls: "pm-assignee-charts" });
     
     sortedAssignees.forEach(([assignee, stats], index) => {
@@ -818,12 +853,18 @@ export class DashboardView extends ItemView {
       // Create mini canvas
       const miniCanvas = chartCard.createEl("canvas", { cls: "pm-mini-chart-canvas" });
       miniCanvas.id = `assignee-mini-chart-${index}`;
-      this.createPieChart(miniCanvas, chartData, "");
+      
+      // Use bar chart or pie chart based on toggle
+      if (this.miniChartsAsBars) {
+        this.createBarChart(miniCanvas, chartData, "", true);
+      } else {
+        this.createPieChart(miniCanvas, chartData, "", true);
+      }
     });
   }
 
   /** Create a bar chart */
-  private createBarChart(canvas: HTMLCanvasElement, data: any, title: string) {
+  private createBarChart(canvas: HTMLCanvasElement, data: any, title: string, isMiniChart: boolean = false) {
     const ctx = canvas.getContext('2d');
     if (!ctx) return null;
     
@@ -850,11 +891,11 @@ export class DashboardView extends ItemView {
         color: textColor, // Global text color
         scales: {
           x: {
-            stacked: true,
+            stacked: !isMiniChart, // Only stack for main charts, not mini charts
             ticks: {
               color: textColor,
               font: {
-                size: 11
+                size: isMiniChart ? 8 : 11
               }
             },
             grid: {
@@ -862,11 +903,11 @@ export class DashboardView extends ItemView {
             }
           },
           y: {
-            stacked: true,
+            stacked: !isMiniChart, // Only stack for main charts, not mini charts
             ticks: {
               color: textColor,
               font: {
-                size: 11
+                size: isMiniChart ? 8 : 11
               }
             },
             grid: {
@@ -876,6 +917,7 @@ export class DashboardView extends ItemView {
         },
         plugins: {
           legend: {
+            display: !isMiniChart, // Hide legend for mini charts
             position: 'bottom',
             labels: {
               color: textColor,
@@ -885,11 +927,11 @@ export class DashboardView extends ItemView {
             }
           },
           title: {
-            display: true,
+            display: title.length > 0,
             text: title,
             color: textColor,
             font: {
-              size: 16,
+              size: isMiniChart ? 12 : 16,
               weight: 'bold'
             }
           },
@@ -900,11 +942,11 @@ export class DashboardView extends ItemView {
             borderColor: borderColor,
             borderWidth: 1,
             titleFont: {
-              size: 14,
+              size: isMiniChart ? 10 : 14,
               weight: 'bold'
             },
             bodyFont: {
-              size: 12
+              size: isMiniChart ? 10 : 12
             },
             callbacks: {
               label: (context) => {
@@ -923,7 +965,7 @@ export class DashboardView extends ItemView {
   }
 
   /** Create a pie chart */
-  private createPieChart(canvas: HTMLCanvasElement, data: any, title: string) {
+  private createPieChart(canvas: HTMLCanvasElement, data: any, title: string, isMiniChart: boolean = false) {
     const ctx = canvas.getContext('2d');
     if (!ctx) return null;
     
@@ -950,20 +992,21 @@ export class DashboardView extends ItemView {
         color: textColor, // Global text color
         plugins: {
           legend: {
+            display: !isMiniChart, // Hide legend for mini charts
             position: 'bottom',
             labels: {
               color: textColor,
               font: {
-                size: 12
+                size: isMiniChart ? 8 : 12
               }
             }
           },
           title: {
-            display: true,
+            display: title.length > 0,
             text: title,
             color: textColor,
             font: {
-              size: 16,
+              size: isMiniChart ? 12 : 16,
               weight: 'bold'
             }
           },
@@ -974,11 +1017,11 @@ export class DashboardView extends ItemView {
             borderColor: borderColor,
             borderWidth: 1,
             titleFont: {
-              size: 14,
+              size: isMiniChart ? 10 : 14,
               weight: 'bold'
             },
             bodyFont: {
-              size: 12
+              size: isMiniChart ? 10 : 12
             },
             callbacks: {
               label: (context) => {
@@ -1570,15 +1613,20 @@ export class DashboardView extends ItemView {
     const totalTasksDiv = summaryStats.createEl("div", { 
       cls: "pm-stat-item"
     });
-    totalTasksDiv.innerHTML = `<strong>Total Tasks:</strong> ${totalTasks}`;
+    totalTasksDiv.createEl("strong", { text: "Total Tasks: " });
+    totalTasksDiv.createEl("span", { text: `${totalTasks}` });
+    
     const completedTasksDiv = summaryStats.createEl("div", { 
       cls: "pm-stat-item"
     });
-    completedTasksDiv.innerHTML = `<strong>Completed:</strong> ${completedTasks}`;
+    completedTasksDiv.createEl("strong", { text: "Completed: " });
+    completedTasksDiv.createEl("span", { text: `${completedTasks}` });
+    
     const completionRateDiv = summaryStats.createEl("div", { 
       cls: "pm-stat-item"
     });
-    completionRateDiv.innerHTML = `<strong>Completion Rate:</strong> ${completionRate}%`;
+    completionRateDiv.createEl("strong", { text: "Completion Rate: " });
+    completionRateDiv.createEl("span", { text: `${completionRate}%` });
     
     const uniqueProjects = new Set(tasks.map(t => t.projectName)).size;
     const uniqueAssignees = new Set(tasks.map(t => 
@@ -1588,10 +1636,13 @@ export class DashboardView extends ItemView {
     const projectsDiv = summaryStats.createEl("div", { 
       cls: "pm-stat-item"
     });
-    projectsDiv.innerHTML = `<strong>Projects:</strong> ${uniqueProjects}`;
+    projectsDiv.createEl("strong", { text: "Projects: " });
+    projectsDiv.createEl("span", { text: `${uniqueProjects}` });
+    
     const assigneesDiv = summaryStats.createEl("div", { 
       cls: "pm-stat-item"
     });
-    assigneesDiv.innerHTML = `<strong>Assignees:</strong> ${uniqueAssignees}`;
+    assigneesDiv.createEl("strong", { text: "Assignees: " });
+    assigneesDiv.createEl("span", { text: `${uniqueAssignees}` });
   }
 }

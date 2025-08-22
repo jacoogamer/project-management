@@ -1,4 +1,11 @@
 import { setIcon } from "obsidian";
+import type { TaskItem } from "../services/cache";
+
+// Extended task interface for tasks with sub-tasks
+interface TaskWithSubs extends TaskItem {
+  sub?: TaskWithSubs[];
+  subs?: TaskWithSubs[];
+}
 /* ────────────────────────────────────────────────────────────────
    Extra helpers for task rows
 ────────────────────────────────────────────────────────────────── */
@@ -39,7 +46,7 @@ export function createTaskControls(
   draw();
 
   if (opts.onToggle) {
-    span.style.cursor = "pointer";
+            span.classList.add("pm-eye-icon");
     span.onclick = (e) => {
       e.preventDefault();
       task.checked = !task.checked;
@@ -55,9 +62,9 @@ export function createTaskControls(
  * Flatten a tree of tasks into the display order used by Dashboard/Timeline.
  * Recurses through `.sub` or `.subs` arrays if present.
  */
-export function orderTasks(tasks: any[]): any[] {
-  const out: any[] = [];
-  (function walk(arr: any[]) {
+export function orderTasks(tasks: TaskWithSubs[]): TaskWithSubs[] {
+  const out: TaskWithSubs[] = [];
+  (function walk(arr: TaskWithSubs[]) {
     arr?.forEach((t) => {
       out.push(t);
       if (Array.isArray(t.sub))  walk(t.sub);

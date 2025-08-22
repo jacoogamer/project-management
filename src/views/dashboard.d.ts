@@ -21,6 +21,8 @@ export declare class DashboardView extends ItemView {
     private originalAssignees;
     /** Currently focused chart type (for drill-down view) */
     private focusedChart?;
+    /** Toggle for mini charts: true = bar charts, false = pie charts */
+    private miniChartsAsBars;
     private cache;
     private settings;
     private container;
