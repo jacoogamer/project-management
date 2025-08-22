@@ -1,0 +1,602 @@
+/* Calendar View Styles */
+
+/* Main calendar container - flex layout like dashboard */
+.pm-calendar-view {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.pm-calendar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  background: var(--background-primary);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pm-calendar-nav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.pm-calendar-nav-btn {
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  padding: 6px 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s ease;
+}
+
+.pm-calendar-nav-btn:hover {
+  background: var(--background-modifier-hover);
+}
+
+.pm-calendar-period {
+  font-size: 1.2em;
+  font-weight: 600;
+  color: var(--text-normal);
+  min-width: 150px;
+  text-align: center;
+}
+
+.pm-calendar-today-btn {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border: none;
+  border-radius: 4px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 0.9em;
+  transition: background-color 0.2s ease;
+}
+
+.pm-calendar-today-btn:hover {
+  background: var(--interactive-accent-hover);
+}
+
+/* Project and Assignee filter buttons */
+.pm-proj-btn {
+  font-size: var(--font-ui-smaller, 0.85rem);
+  margin-left: 8px;
+  padding: 4px 8px;
+  border: 1px solid var(--divider-color);
+  border-radius: 4px;
+  background: var(--background-secondary);
+  color: var(--text-normal);
+  cursor: pointer;
+}
+
+.pm-proj-btn:hover {
+  background: var(--background-modifier-hover);
+}
+
+/* Control links line at top of each picker */
+.pm-proj-dd-ctl {
+  margin-bottom: 4px;
+  font-weight: 600;
+  text-align: left;
+  padding-left: 4px;
+}
+
+.pm-proj-dd-ctl a {
+  cursor: pointer;
+  text-decoration: underline;
+  color: var(--text-accent);
+}
+
+/* Dropdown styling */
+.pm-proj-dd {
+  position: fixed;
+  max-height: 300px;
+  overflow-y: auto;
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 10000;
+  min-width: 200px;
+  border-radius: 6px;
+  font-size: var(--font-ui-smaller);
+  padding: 8px 0;
+}
+
+.pm-proj-dd-item {
+  display: block;
+  white-space: nowrap;
+  cursor: pointer;
+  line-height: 1.4;
+  padding: 4px 12px;
+  transition: background-color 0.2s ease;
+}
+
+.pm-proj-dd-item:hover {
+  background: var(--background-modifier-hover);
+}
+
+/* Dropdown check icon styling */
+.pm-proj-dd .pm-dd-check {
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 8px;
+}
+
+/* Selected state - use accent color */
+.pm-proj-dd .pm-dd-check svg[data-lucide="check-circle"] {
+  color: var(--interactive-accent) !important;
+}
+
+/* Alternative selector for selected state */
+.pm-proj-dd .pm-dd-check[data-checked="true"] svg {
+  color: var(--interactive-accent) !important;
+}
+
+/* Hover state for better visibility */
+.pm-proj-dd .pm-dd-check:hover {
+  color: var(--interactive-accent);
+  transform: scale(1.1);
+}
+
+
+
+/* Calendar content container - scrollable area */
+.pm-calendar-content {
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+/* Calendar Grid */
+.pm-calendar-grid {
+  padding: 16px;
+}
+
+/* Month View */
+.pm-calendar-day-headers {
+  display: grid;
+  grid-template-columns: 40px repeat(7, 1fr);
+  gap: 1px;
+  margin-bottom: 8px;
+}
+
+.pm-calendar-day-header {
+  padding: 8px;
+  text-align: center;
+  font-weight: 600;
+  color: var(--text-muted);
+  font-size: 0.9em;
+  background: var(--background-secondary);
+  border-radius: 4px;
+}
+
+.pm-calendar-week-header {
+  padding: 8px;
+  text-align: center;
+  font-weight: 600;
+  color: var(--text-muted);
+  font-size: 0.9em;
+  background: var(--background-secondary);
+  border-radius: 4px;
+}
+
+.pm-calendar-week-number {
+  padding: 8px;
+  text-align: center;
+  font-weight: 600;
+  color: var(--text-muted);
+  font-size: 0.9em;
+  background: var(--background-secondary);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: help;
+  transition: background-color 0.2s ease;
+}
+
+.pm-calendar-week-number:hover {
+  background: var(--background-modifier-hover);
+}
+
+.pm-calendar-days-grid {
+  display: grid;
+  grid-template-columns: 40px repeat(7, 1fr);
+  gap: 1px;
+  min-height: 600px;
+}
+
+.pm-calendar-day-wrapper {
+  position: relative;
+  min-height: 80px;
+}
+
+.pm-calendar-day {
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  padding: 8px;
+  height: 100%;
+  position: relative;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.pm-calendar-day:hover {
+  background: var(--background-modifier-hover);
+  border-color: var(--interactive-accent);
+}
+
+.pm-calendar-day-today {
+  background: var(--background-secondary-alt);
+  border-color: var(--interactive-accent);
+  border-width: 2px;
+}
+
+.pm-calendar-day-has-tasks {
+  background: var(--background-secondary-alt);
+  border-color: var(--interactive-accent);
+  border-width: 2px;
+}
+
+.pm-calendar-day-today.pm-calendar-day-has-tasks {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+.pm-calendar-day-other-month {
+  background: var(--background-secondary) !important;
+  color: var(--text-muted);
+}
+
+.pm-calendar-day-other-month .pm-calendar-day-number {
+  color: var(--text-muted);
+}
+
+.pm-calendar-day-other-month .pm-calendar-task-count {
+  opacity: 0.6;
+}
+
+.pm-calendar-day-other-month .pm-calendar-task-indicators {
+  opacity: 0.6;
+}
+
+.pm-calendar-day-number {
+  font-weight: 600;
+  font-size: 1.1em;
+  margin-bottom: 4px;
+  color: var(--text-normal);
+}
+
+.pm-calendar-task-count {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  color: white;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8em;
+  font-weight: 600;
+}
+
+.pm-task-count-low {
+  background: #28a745; /* Green - manageable workload */
+}
+
+.pm-task-count-medium {
+  background: #ffc107; /* Yellow - moderate workload */
+  color: #212529; /* Dark text for better contrast */
+}
+
+.pm-task-count-high {
+  background: #dc3545; /* Red - heavy workload */
+}
+
+.pm-calendar-task-indicators {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 4px;
+  font-size: 0.7em;
+}
+
+.pm-calendar-due-indicator {
+  background: rgba(220, 53, 69, 0.2);
+  color: #dc3545;
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-weight: 500;
+  text-align: center;
+}
+
+.pm-calendar-start-indicator {
+  background: rgba(40, 167, 69, 0.2);
+  color: #28a745;
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-weight: 500;
+  text-align: center;
+}
+
+.pm-calendar-priority-dots {
+  display: flex;
+  gap: 2px;
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
+
+.pm-priority-dot {
+  font-size: 0.8em;
+  font-weight: bold;
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+}
+
+.pm-priority-high {
+  background: #dc3545;
+}
+
+.pm-priority-medium {
+  background: #ffc107;
+  color: #212529;
+}
+
+.pm-priority-low {
+  background: #28a745;
+}
+
+
+
+/* Task Preview (Hover) */
+.pm-task-preview {
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  padding: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  max-width: 300px;
+  max-height: 300px;
+  overflow-y: auto;
+  z-index: 50000;
+}
+
+.pm-task-preview-header {
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: var(--text-normal);
+  font-size: 0.9em;
+}
+
+.pm-task-preview-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pm-task-preview-item {
+  font-size: 0.85em;
+  color: var(--text-normal);
+  padding: 2px 0;
+}
+
+.pm-task-preview-more {
+  font-size: 0.8em;
+  color: var(--text-muted);
+  font-style: italic;
+  margin-top: 4px;
+}
+
+.pm-task-preview-section {
+  font-weight: 600;
+  font-size: 0.85em;
+  color: var(--text-normal);
+  margin: 6px 0 2px 0;
+  border-bottom: 1px solid var(--background-modifier-border);
+  padding-bottom: 2px;
+}
+
+/* Day Expansion (Click) */
+.pm-day-expansion {
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  max-width: 500px;
+  max-height: 400px;
+  overflow-y: auto;
+  z-index: 99999;
+}
+
+.pm-day-expansion-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  font-weight: 600;
+  color: var(--text-normal);
+}
+
+.pm-day-expansion-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  color: var(--text-muted);
+  transition: background-color 0.2s ease;
+}
+
+.pm-day-expansion-close:hover {
+  background: var(--background-modifier-hover);
+}
+
+.pm-day-expansion-empty {
+  text-align: center;
+  color: var(--text-muted);
+  font-style: italic;
+  padding: 20px;
+}
+
+.pm-day-expansion-tasks {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Task Sections */
+.pm-task-section {
+  border-radius: 6px;
+  padding: 12px;
+}
+
+.pm-task-section-high {
+  background: rgba(220, 53, 69, 0.1);
+  border-left: 4px solid #dc3545;
+}
+
+.pm-task-section-medium {
+  background: rgba(255, 193, 7, 0.1);
+  border-left: 4px solid #ffc107;
+}
+
+.pm-task-section-low {
+  background: rgba(40, 167, 69, 0.1);
+  border-left: 4px solid #28a745;
+}
+
+.pm-task-section-none {
+  background: rgba(108, 117, 125, 0.1);
+  border-left: 4px solid #6c757d;
+}
+
+.pm-task-section-due {
+  background: rgba(220, 53, 69, 0.05);
+  border-left: 4px solid #dc3545;
+  margin-bottom: 16px;
+}
+
+.pm-task-section-start {
+  background: rgba(40, 167, 69, 0.05);
+  border-left: 4px solid #28a745;
+  margin-bottom: 16px;
+}
+
+.pm-task-subsection {
+  margin-bottom: 8px;
+  padding-left: 12px;
+}
+
+.pm-task-section h4 {
+  margin: 0 0 8px 0;
+  font-size: 0.9em;
+  font-weight: 600;
+  color: var(--text-normal);
+}
+
+/* Task Items */
+.pm-task-item {
+  padding: 8px;
+  background: var(--background-primary);
+  border-radius: 4px;
+  margin-bottom: 4px;
+  border: 1px solid var(--background-modifier-border);
+}
+
+.pm-task-text {
+  font-weight: 500;
+  color: var(--text-normal);
+  margin-bottom: 4px;
+}
+
+.pm-task-meta {
+  display: flex;
+  gap: 8px;
+  font-size: 0.8em;
+  color: var(--text-muted);
+}
+
+.pm-task-project {
+  background: var(--background-secondary);
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+.pm-task-assignee {
+  color: var(--text-muted);
+}
+
+.pm-task-date {
+  color: var(--text-muted);
+  font-size: 0.9em;
+}
+
+
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .pm-calendar-header {
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch;
+  }
+  
+  .pm-calendar-nav {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  
+  .pm-proj-btn {
+    font-size: 0.8em;
+    padding: 4px 8px;
+    margin-left: 4px;
+  }
+  
+  .pm-calendar-days-grid {
+    min-height: 400px;
+  }
+  
+  .pm-calendar-day {
+    min-height: 60px;
+    padding: 4px;
+  }
+  
+  .pm-day-expansion {
+    max-width: 90vw;
+    max-height: 60vh;
+  }
+}
+
+/* Dark mode adjustments */
+.theme-dark .pm-task-preview {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.theme-dark .pm-day-expansion {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}

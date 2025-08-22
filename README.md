@@ -51,6 +51,16 @@ A comprehensive project management plugin for Obsidian that helps you organize, 
 - **Project Filtering**: Filter tasks by specific projects or portfolios
 - **Task Viewing**: View task details and status for daily planning
 
+### 📅 Calendar View
+- **Monthly Calendar**: Visual calendar interface showing tasks by day
+- **Task Indicators**: Color-coded task counts showing workload intensity
+- **Day Expansion**: Click on days to see detailed task lists
+- **Starting vs Due Tasks**: Separate display of tasks starting and due on each day
+- **ISO Week Numbers**: Week numbers displayed for better planning
+- **Project & Assignee Filtering**: Filter tasks by projects and assignees
+- **Monday Start**: Calendar starts on Monday for better work week planning
+- **Month Navigation**: Navigate between months with previous/next buttons
+
 ## Installation
 
 ### From Obsidian
@@ -272,6 +282,30 @@ Tasks can have the following statuses:
 - Navigate between dates to plan ahead or review past work
 - Use the view to identify what needs to be done today
 
+### 📅 Calendar View - Monthly Task Planning
+
+**Purpose**: Visual monthly calendar interface for comprehensive task planning and workload management.
+
+**Key Features**:
+- **Monthly Overview**: Visual calendar showing all days with task indicators
+- **Task Count Indicators**: Color-coded numbers showing task workload intensity
+- **Day Details**: Click on any day to see detailed task lists with project and assignee information
+- **Starting vs Due Tasks**: Separate display of tasks starting and due on each day
+- **ISO Week Numbers**: Week numbers displayed for better planning and coordination
+- **Project & Assignee Filtering**: Filter tasks by specific projects and assignees
+- **Monday Start**: Calendar starts on Monday for better work week planning
+- **Month Navigation**: Navigate between months with previous/next buttons
+- **Today Highlighting**: Current day is highlighted for easy identification
+
+**Best Practices**:
+- Use for monthly planning and capacity management
+- Monitor task density with color-coded indicators
+- Use day expansion to review detailed task lists
+- Filter by projects to focus on specific initiatives
+- Use assignee filters to check individual workloads
+- Navigate between months to plan ahead or review past work
+- Use ISO week numbers for better team coordination
+
 ### General Workflow Tips
 
 **Project Organization**:
@@ -306,6 +340,7 @@ The plugin provides several commands that can be accessed through the Command Pa
 | "Open Project Timeline" | Opens the Timeline view |
 | "Open Weekly Task View" | Opens the Task Weeks view |
 | "Open Today View" | Opens the Today view |
+| "Open Calendar View" | Opens the Calendar view |
 | "Open Resources View" | Opens the Resources view |
 
 ### Project Management Commands
@@ -320,6 +355,7 @@ The plugin also provides ribbon icons in the left sidebar for quick access to vi
 - **Progress** (bar-chart-2 icon): Toggle in settings
 - **Timeline** (calendar-clock icon): Toggle in settings  
 - **Task Weeks** (calendar-check icon): Toggle in settings
+- **Calendar** (calendar icon): Toggle in settings
 - **Resources** (users icon): Toggle in settings
 
 > **Note**: Dashboard and Today views are accessible through the command palette or from within other views.
@@ -367,6 +403,7 @@ This project is licensed under the MIT License. See LICENSE file for details
 ## Changelog
 
 ### Latest Version
+- Added Calendar view with monthly task planning interface
 - Added task filter input to Progress view
 - Improved dark mode styling for project rows
 - Fixed weekly top toggle functionality

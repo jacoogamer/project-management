@@ -761,12 +761,25 @@ svg marker#pmArrowHeadHover path {
 .pm-move-toggle svg,
 .pm-arrow-toggle svg,
 .pm-assignee-toggle svg,
+.pm-tooltip-toggle svg,
 .pm-milestone-toggle svg,
 .pm-cal-start svg,
 .pm-cal-end svg,
 .pm-project-eye svg {
   stroke: var(--text-muted) !important;
   color: var(--text-muted) !important;
+}
+
+/* Disabled/off state for toggle icons */
+.pm-heatmap-toggle.off svg,
+.pm-move-toggle.off svg,
+.pm-arrow-toggle.off svg,
+.pm-assignee-toggle.off svg,
+.pm-tooltip-toggle.off svg,
+.pm-milestone-toggle.off svg {
+  stroke: var(--text-muted) !important;
+  color: var(--text-muted) !important;
+  opacity: 0.5 !important;
 }
 
 /* Hover row icons: accent color */
@@ -777,6 +790,7 @@ svg marker#pmArrowHeadHover path {
 .pm-tl-row:hover .pm-move-toggle svg,
 .pm-tl-row:hover .pm-arrow-toggle svg,
 .pm-tl-row:hover .pm-assignee-toggle svg,
+.pm-tl-row:hover .pm-tooltip-toggle svg,
 .pm-tl-row:hover .pm-milestone-toggle svg,
 .pm-tl-row:hover .pm-cal-start svg,
 .pm-tl-row:hover .pm-cal-end svg,
@@ -844,3 +858,5 @@ body.theme-dark .pm-proj-baseline::after {
   display: block;
   vertical-align: middle;
 }
+
+/* Date picker popup styles are inline in the JavaScript code */

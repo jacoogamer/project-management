@@ -45,6 +45,10 @@ export default class ProjectManagementPlugin extends Plugin {
      */
     activateToday(): Promise<void>;
     /**
+     * Open the Calendar view.
+     */
+    activateCalendar(): Promise<void>;
+    /**
      * Create or remove ribbon icons according to current settings.
      * Called onload() and whenever a toggle changes in Settings.
      */

@@ -6,6 +6,7 @@ export declare const VIEW_TYPE_PM_PORTFOLIO = "pm-portfolio-view";
 export declare class PortfolioView extends ItemView {
     private cache;
     private settings;
+    private plugin;
     icon: string;
     private portfolios;
     private selectedId;
@@ -15,7 +16,7 @@ export declare class PortfolioView extends ItemView {
     /** Sorting key and direction (1 = asc, -1 = desc) */
     private sortKey;
     private sortDir;
-    constructor(leaf: WorkspaceLeaf, cache: ProjectCache, settings: PmSettings);
+    constructor(leaf: WorkspaceLeaf, cache: ProjectCache, settings: PmSettings, plugin: any);
     getViewType(): string;
     getDisplayText(): string;
     onOpen(): Promise<void>;
@@ -36,6 +37,8 @@ export declare class PortfolioView extends ItemView {
     private openDashboard;
     /** Open Today view showing task recommendations */
     private openToday;
+    /** Open Calendar view showing task calendar for this portfolio */
+    private openCalendar;
     /** Open Timeline showing only projects in the selected portfolio */
     private openTimeline;
     private toggleSort;

@@ -133,34 +133,84 @@ function orderTasksDash(tasks: ExtendedTaskItem[]): ExtendedTaskItem[] {
   const done = new Set<ExtendedTaskItem>();
   const out: ExtendedTaskItem[] = [];
 
-  const pushWithSubs = (t: ExtendedTaskItem) => {
-    if (done.has(t)) return;
-    done.add(t);
-    out.push(t);
+  /** quick helpers */
+  const idLower = (t: ExtendedTaskItem) => t.id.toLowerCase();
+  const isEpic  = (t: ExtendedTaskItem) => idLower(t).startsWith("e");
+  const isStory = (t: ExtendedTaskItem) =>
+    idLower(t).startsWith("s") && !idLower(t).startsWith("sb");
+  const isSub   = (t: ExtendedTaskItem) => idLower(t).startsWith("sb");
 
-    // Push SB‑ tasks that depend on this Story
-    tasks.forEach((sb) => {
-      if (done.has(sb)) return;
-      const id   = (sb.id ?? "").toLowerCase();
-      if (!id.startsWith("sb")) return;
-      const deps = (sb.depends ?? []).map((d: string) => d.toLowerCase());
-      if (deps.includes((t.id ?? "").toLowerCase())) pushWithSubs(sb);
+  /** map Story‑id → [sub‑tasks]  (reuse existing Story column + depends logic) */
+  const subsByStory = new Map<string, ExtendedTaskItem[]>();
+  const stripType = (raw: string) =>
+    raw.trim().toLowerCase().replace(/^(fs|ss|ff|sf):/, ""); // drop link‑type
+
+  tasks.forEach(t => {
+    if (!isSub(t)) return;
+
+    /* 1️⃣  Preferred: explicit Story column */
+    let storyKey = (t.props["story"] ?? "").toString().trim();
+    storyKey = storyKey ? storyKey.toLowerCase() : "";
+
+    /* 2️⃣  Fallback: first depends:: entry, minus any FS/SS/FF/SF prefix */
+    if (!storyKey && Array.isArray(t.depends) && t.depends.length) {
+      storyKey = stripType(String(t.depends[0]));
+    }
+
+    if (!storyKey) return;
+
+    if (!subsByStory.has(storyKey)) subsByStory.set(storyKey, []);
+    subsByStory.get(storyKey)!.push(t);
+  });
+
+  /** map Epic‑id → [stories] (Story.Epic column) */
+  const storiesByEpic = new Map<string, ExtendedTaskItem[]>();
+  tasks.forEach(t => {
+    if (!isStory(t)) return;
+    const epicField = (t.props["epic"] ?? "").toString().trim().toLowerCase();
+    if (!epicField) return;
+    if (!storiesByEpic.has(epicField)) storiesByEpic.set(epicField, []);
+    storiesByEpic.get(epicField)!.push(t);
+  });
+
+  /** helper to push Story + its subs */
+  const pushStoryWithSubs = (s: ExtendedTaskItem) => {
+    if (done.has(s)) return;
+    done.add(s);
+    out.push(s);
+    const kids = subsByStory.get(idLower(s));
+    if (kids) kids.forEach(k => {
+      if (!done.has(k)) {
+        done.add(k);
+        out.push(k);
+      }
     });
   };
 
-  tasks.forEach((t) => {
-    if (done.has(t)) return;
-    const id = (t.id ?? "").toLowerCase();
-
-    if (id.startsWith("e")) {          // Epics first
-      pushWithSubs(t);
-    } else if (id.startsWith("s") && !id.startsWith("sb")) { // Stories next
-      pushWithSubs(t);
+  /** 1️⃣ Epics in original order, each followed by its Stories + Subs */
+  tasks.forEach(t => {
+    if (!isEpic(t) || done.has(t)) return;
+    done.add(t);
+    out.push(t);
+    const stories = storiesByEpic.get(idLower(t));
+    if (stories) {
+      stories.forEach(pushStoryWithSubs);
     }
   });
 
-  // Append any remaining tasks (including standalone SB or others)
-  tasks.forEach((t) => { if (!done.has(t)) out.push(t); });
+  /** 2️⃣ Standalone Stories (no Epic) */
+  tasks.forEach(t => {
+    if (!isStory(t) || done.has(t)) return;
+    pushStoryWithSubs(t);
+  });
+
+  /** 3️⃣ Remaining tasks (subs w/out story, plain rows, etc.) */
+  tasks.forEach(t => {
+    if (!done.has(t)) {
+      done.add(t);
+      out.push(t);
+    }
+  });
 
   return out;
 }
@@ -293,39 +343,57 @@ export class ResourcesView extends ItemView {
     this.render();
   }
 
-  /** Check if all projects are currently collapsed */
+  /** Check if all currently visible projects are collapsed */
   private areAllProjectsCollapsed(): boolean {
     if (this.sortMode !== 'project' && this.sortMode !== 'hierarchical') {
       return false; // Not applicable for alphabetical mode
     }
     
-    // Get all unique project names from the current data
-    const projectNames = new Set<string>();
-    this.cache.projects.forEach((project: ProjectEntry) => {
-      project.tasks?.forEach((task: TaskItem) => {
-        const projectName = project.file.basename ?? "Unknown Project";
-        projectNames.add(projectName);
+    // Get all unique project names from the currently visible/filtered data
+    const visibleProjectNames = new Set<string>();
+    
+    // Get filtered projects (same logic as in render method)
+    let projects: any[] = Array.from(this.cache.projects.values())
+      .sort((a, b) => a.file.basename.localeCompare(b.file.basename))
+      .filter((p) => !this.filterPaths || this.filterPaths.has(p.file.path));
+
+    projects.forEach((proj: any) => {
+      (proj as any).tasks?.forEach((t: any) => {
+        const projectName = proj.file?.basename ?? proj.name ?? "Untitled";
+        visibleProjectNames.add(projectName);
       });
     });
     
-    // Check if all projects are in the collapsed set
-    return Array.from(projectNames).every(projectName => 
+    // Check if all visible projects are in the collapsed set
+    return visibleProjectNames.size > 0 && Array.from(visibleProjectNames).every(projectName => 
       this.collapsedProjects.has(projectName)
     );
   }
 
-  /** Collapse all projects */
+  /** Collapse all currently visible projects */
   private collapseAllProjects(): void {
     if (this.sortMode !== 'project' && this.sortMode !== 'hierarchical') {
       return; // Not applicable for alphabetical mode
     }
     
-    // Get all unique project names and add them to collapsed set
-    this.cache.projects.forEach((project: ProjectEntry) => {
-      project.tasks?.forEach((task: TaskItem) => {
-        const projectName = project.file.basename ?? "Unknown Project";
-        this.collapsedProjects.add(projectName);
+    // Only add project names that are currently visible/filtered
+    const visibleProjectNames = new Set<string>();
+    
+    // Get filtered projects (same logic as in render method)
+    let projects: any[] = Array.from(this.cache.projects.values())
+      .sort((a, b) => a.file.basename.localeCompare(b.file.basename))
+      .filter((p) => !this.filterPaths || this.filterPaths.has(p.file.path));
+
+    projects.forEach((proj: any) => {
+      (proj as any).tasks?.forEach((t: any) => {
+        const projectName = proj.file?.basename ?? proj.name ?? "Untitled";
+        visibleProjectNames.add(projectName);
       });
+    });
+    
+    // Only add visible project names to the collapsed set
+    visibleProjectNames.forEach(projectName => {
+      this.collapsedProjects.add(projectName);
     });
   }
 

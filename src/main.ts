@@ -6,6 +6,7 @@ import { TaskWeeksView, VIEW_TYPE_PM_TASKWEEKS } from "./views/task_weeks";
 import { ResourcesView, VIEW_TYPE_PM_RESOURCES } from "./views/resources";
 import { DashboardView, VIEW_TYPE_PM_DASHBOARD } from "./views/dashboard";
 import { TodayView, VIEW_TYPE_PM_TODAY } from "./views/today";
+import { CalendarView, VIEW_TYPE_PM_CALENDAR } from "./views/calendar";
 import { ProjectCache } from "./services/cache";
 import { PmSettings, DEFAULT_SETTINGS, PmSettingsTab } from "../settings";
 import { newProject } from "./newProject";
@@ -21,6 +22,7 @@ export default class ProjectManagementPlugin extends Plugin {
     resources?: HTMLElement;
     portfolio?: HTMLElement;
     dashboard?: HTMLElement;
+    calendar?: HTMLElement;
   } = {};
   private addedPortfolio: boolean = false;
 
@@ -70,6 +72,11 @@ export default class ProjectManagementPlugin extends Plugin {
       name: "Open Dashboard View",
       callback: () => this.activateDashboard(),
     });
+    this.addCommand({
+      id: "open-calendar-view",
+      name: "Open Calendar View",
+      callback: () => this.activateCalendar(),
+    });
 
 
     /* Manual re‑index command */
@@ -95,7 +102,7 @@ export default class ProjectManagementPlugin extends Plugin {
     );
     this.registerView(
       VIEW_TYPE_PM_PORTFOLIO,
-      (leaf: WorkspaceLeaf) => new PortfolioView(leaf, this.cache, this.settings)
+      (leaf: WorkspaceLeaf) => new PortfolioView(leaf, this.cache, this.settings, this)
     );
     this.registerView(
       VIEW_TYPE_PM_TASKWEEKS,
@@ -112,6 +119,10 @@ export default class ProjectManagementPlugin extends Plugin {
     this.registerView(
       VIEW_TYPE_PM_TODAY,
       (leaf: WorkspaceLeaf) => new TodayView(leaf, this.cache, this.settings)
+    );
+    this.registerView(
+      VIEW_TYPE_PM_CALENDAR,
+      (leaf: WorkspaceLeaf) => new CalendarView(leaf, this.cache, this.settings)
     );
 
     // Keep cache updated when metadata is resolved
@@ -610,6 +621,28 @@ export default class ProjectManagementPlugin extends Plugin {
     });
     this.app.workspace.revealLeaf(leaf);
   }
+
+  /**
+   * Open the Calendar view.
+   */
+  async activateCalendar() {
+    // Re‑use an existing Calendar view if open
+    let leaf = this.app.workspace.getLeavesOfType(VIEW_TYPE_PM_CALENDAR)[0];
+
+    // Otherwise create a new leaf to the right of the active pane
+    if (!leaf) {
+      const active = this.app.workspace.activeLeaf;
+      leaf = active
+        ? this.app.workspace.splitActiveLeaf("vertical")
+        : this.app.workspace.getLeaf(true);
+    }
+
+    await leaf.setViewState({
+      type:   VIEW_TYPE_PM_CALENDAR,
+      active: true,
+    });
+    this.app.workspace.revealLeaf(leaf);
+  }
   /**
    * Create or remove ribbon icons according to current settings.
    * Called onload() and whenever a toggle changes in Settings.
@@ -671,6 +704,18 @@ export default class ProjectManagementPlugin extends Plugin {
         this.activatePortfolio()
       );
       this.addedPortfolio = true;
+    }
+
+    /* Calendar */
+    if (s.showCalendarRibbon && !this.ribbons.calendar) {
+      this.ribbons.calendar = this.addRibbonIcon(
+        "calendar-days",
+        "Open Calendar View",
+        () => this.activateCalendar()
+      );
+    } else if (!s.showCalendarRibbon && this.ribbons.calendar) {
+      this.ribbons.calendar.detach();
+      delete this.ribbons.calendar;
     }
 
 

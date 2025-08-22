@@ -62,9 +62,9 @@ export declare class ResourcesView extends ItemView {
     private allCollapsed;
     /** Collapse or expand all projects at once */
     private toggleAll;
-    /** Check if all projects are currently collapsed */
+    /** Check if all currently visible projects are collapsed */
     private areAllProjectsCollapsed;
-    /** Collapse all projects */
+    /** Collapse all currently visible projects */
     private collapseAllProjects;
     /** Toggle fold / unfold for one project and re-render */
     private toggle;

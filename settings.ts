@@ -25,6 +25,7 @@ export interface PmSettings {
   showHeatmap: boolean;      // new toggle
   showAssignees: boolean;   // toggle assignee labels
   showMilestones: boolean;
+  showTooltips: boolean;          // toggle bar tooltips/popups
   showBarShadows: boolean;        // toggle bar shadows
   allowBarMove: boolean;           // enable Alt‑drag bar move
   timelineStart?: string;         // ISO YYYY‑MM‑DD for timeline start (empty = today)
@@ -58,6 +59,7 @@ export interface PmSettings {
   showTimelineRibbon:  boolean;
   showTaskRibbon:      boolean;   // Task Weeks
   showResourcesRibbon: boolean;
+  showCalendarRibbon: boolean;
 
 
   // ===== Pane Reuse Settings =====
@@ -65,6 +67,9 @@ export interface PmSettings {
   reuseTimelinePane:   boolean;
   reuseTaskWeeksPane:  boolean;
   reuseResourcesPane:  boolean;
+
+  // ===== Portfolio Settings =====
+  lastSelectedPortfolio?: string;
 }
 
 export const DEFAULT_SETTINGS: PmSettings = {
@@ -82,6 +87,7 @@ export const DEFAULT_SETTINGS: PmSettings = {
   showHeatmap: true,
   showAssignees: true,
   showMilestones: true,
+  showTooltips: true,
   showBarShadows: true,
   allowBarMove: true,
   timelineStart: "",
@@ -115,6 +121,7 @@ export const DEFAULT_SETTINGS: PmSettings = {
   showTimelineRibbon: true,
   showTaskRibbon: true,
   showResourcesRibbon: true,
+  showCalendarRibbon: true,
 
 
   // ===== Pane Reuse Settings =====
@@ -122,6 +129,9 @@ export const DEFAULT_SETTINGS: PmSettings = {
   reuseTimelinePane: true,
   reuseTaskWeeksPane: true,
   reuseResourcesPane: true,
+
+  // ===== Portfolio Settings =====
+  lastSelectedPortfolio: undefined,
 };
 
 export class PmSettingsTab extends PluginSettingTab {
@@ -502,6 +512,25 @@ export class PmSettingsTab extends PluginSettingTab {
       );
 
     new Setting(timelineSection)
+      .setName("Show bar tooltips")
+      .setDesc("Display information popups when hovering over task bars.")
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.showTooltips)
+          .onChange(async (value) => {
+            this.plugin.settings.showTooltips = value;
+            await this.plugin.saveSettings();
+
+            /* Refresh Timeline views without losing scroll */
+            this.app.workspace.getLeavesOfType(VIEW_TYPE_PM_TIMELINE).forEach((leaf) => {
+              const v = leaf.view as any;
+              if (typeof v.saveAndRender === "function") v.saveAndRender();
+              else if (typeof v.render === "function") v.render();
+            });
+          })
+      );
+
+    new Setting(timelineSection)
       .setName("Enable bar drag‑to‑move")
       .setDesc("Allow Alt‑dragging a bar in the timeline to shift its start/due dates.")
       .addToggle((toggle) =>
@@ -731,6 +760,18 @@ export class PmSettingsTab extends PluginSettingTab {
         t.setValue(this.plugin.settings.showResourcesRibbon)
          .onChange(async v => {
            this.plugin.settings.showResourcesRibbon = v;
+           await this.plugin.saveSettings();
+           (this.plugin as any).refreshRibbonIcons?.();
+         })
+      );
+
+    new Setting(ribbonSection)
+      .setName("Calendar ribbon icon")
+      .setDesc("Show or hide the Calendar view icon in the ribbon.")
+      .addToggle(t =>
+        t.setValue(this.plugin.settings.showCalendarRibbon)
+         .onChange(async v => {
+           this.plugin.settings.showCalendarRibbon = v;
            await this.plugin.saveSettings();
            (this.plugin as any).refreshRibbonIcons?.();
          })

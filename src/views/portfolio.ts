@@ -21,6 +21,7 @@ import { VIEW_TYPE_PM_TASKWEEKS } from "./task_weeks";
 import { VIEW_TYPE_PM_RESOURCES } from "./resources";
 import { VIEW_TYPE_PM_DASHBOARD } from "./dashboard";
 import { VIEW_TYPE_PM_TODAY } from "./today";
+import { VIEW_TYPE_PM_CALENDAR } from "./calendar";
 
 // Load portfolio-specific styles
 import "../../styles/styles-portfolio.css";
@@ -153,7 +154,8 @@ export class PortfolioView extends ItemView {
   constructor(
     leaf: WorkspaceLeaf,
     private cache: ProjectCache,
-    private settings: PmSettings
+    private settings: PmSettings,
+    private plugin: any
   ) {
     super(leaf);
   }
@@ -171,7 +173,16 @@ export class PortfolioView extends ItemView {
     await migrateOldPortfolios(this.app);
     await this.ensureFolder();
     await this.loadPortfolios();
-    if (this.portfolios[0]) this.selectedId = this.portfolios[0].id;
+    
+    // Try to restore the last selected portfolio, otherwise use the first one
+    const lastSelected = this.settings.lastSelectedPortfolio;
+    const lastPortfolio = lastSelected ? this.portfolios.find(p => p.id === lastSelected) : null;
+    
+    if (lastPortfolio) {
+      this.selectedId = lastPortfolio.id;
+    } else if (this.portfolios[0]) {
+      this.selectedId = this.portfolios[0].id;
+    }
 
     /* If vault indexing isn't finished, refresh once "resolved" fires */
     if ((this.app.metadataCache as any).resolved === false) {
@@ -494,6 +505,33 @@ export class PortfolioView extends ItemView {
     }
   }
 
+  /** Open Calendar view showing task calendar for this portfolio */
+  private async openCalendar() {
+    // Collect project paths for the active portfolio
+    const sel    = this.portfolios.find((pf) => pf.id === this.selectedId);
+    const filter = sel?.projectPaths ?? [];
+
+    // Reuse an existing Calendar leaf; otherwise create new leaf
+    let leaf: WorkspaceLeaf | undefined;
+    if (this.settings.reuseProgressPane) {
+      leaf = this.app.workspace.getLeavesOfType(VIEW_TYPE_PM_CALENDAR)[0];
+    }
+    if (!leaf) leaf = this.app.workspace.getLeaf();
+
+    if (leaf) {
+      await leaf.setViewState({
+        type:   VIEW_TYPE_PM_CALENDAR,
+        active: true,
+        state:  {
+          filterProjects: filter,
+          filterName:     sel?.name ?? "",
+        },
+      });
+
+      this.app.workspace.revealLeaf(leaf);
+    }
+  }
+
   /** Open Timeline showing only projects in the selected portfolio */
   private async openTimeline() {
     // Collect project paths for the active portfolio
@@ -714,6 +752,11 @@ export class PortfolioView extends ItemView {
       };
       await this.savePortfolio(pf);
       this.selectedId = id;
+      
+      // Save the selected portfolio to settings
+      this.settings.lastSelectedPortfolio = id;
+      await this.plugin.saveSettings();
+      
       this.render();
     };
 
@@ -730,11 +773,16 @@ export class PortfolioView extends ItemView {
 
       /* Portfolio name */
       const nameSpan = li.createSpan({ text: p.name, cls: "pm-port-name" });
-      nameSpan.onclick = () => {
+      nameSpan.onclick = async () => {
         /* Close any active tooltip */
         this.descTip?.remove();
         this.descTip = null;
         this.selectedId = p.id;
+        
+        // Save the selected portfolio to settings
+        this.settings.lastSelectedPortfolio = p.id;
+        await this.plugin.saveSettings();
+        
         this.render();
       };
       /* Hover tooltip with portfolio description */
@@ -840,6 +888,15 @@ export class PortfolioView extends ItemView {
       colHead.createEl("span", { text: txt })
     );*/
     const openBtns = titleRow.createDiv({ cls: "pm-port-open" });
+
+    /* Calendar */
+    const calendarBtn = openBtns.createEl("button");
+    const icoCalendar = calendarBtn.createSpan();
+    setIcon(icoCalendar, "calendar-days");
+    icoCalendar.style.marginRight = "4px";
+    calendarBtn.createSpan({ text: "Calendar" });
+    attachTip(calendarBtn, "Open calendar view for this portfolio");
+    calendarBtn.onclick = () => this.openCalendar();
 
     /* Today */
     const todayBtn = openBtns.createEl("button");

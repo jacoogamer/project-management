@@ -19,67 +19,54 @@ interface ExtendedMilestone extends Milestone {
 }
 // Load timeline-specific stylesheet
 import "../../styles/styles-timeline.css";
-/** Simple text-input modal for YYYY-MM-DD dates */
-class DatePromptModal extends Modal {
-  private label: string;
-  private current: string;
-  private resolve: ((val: string | null) => void) | null = null;
-
-  constructor(app: App, label: string, current: string) {
-    super(app);
-    this.label = label;
-    this.current = current ?? "";
-  }
-
-  openWithPromise(): Promise<string | null> {
-    this.open();
-    return new Promise((resolve) => {
-      this.resolve = resolve;
-    });
-  }
-
-  onOpen() {
-    const { contentEl } = this;
-    contentEl.empty();
-    contentEl.createEl("h3", { text: `Set ${this.label} date` });
-    const desc = contentEl.createEl("div", { text: "Enter a date (YYYY-MM-DD). Leave blank to clear.", cls: "pm-date-input-desc" });
-    const input = contentEl.createEl("input", { type: "text", cls: "pm-date-input" });
-    input.value = this.current;
-    input.placeholder = "YYYY-MM-DD";
-    input.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        this.submit(input.value);
-      } else if (e.key === "Escape") {
-        this.closeWith(null);
+/** Trigger native date picker for timeline dates */
+function triggerNativeDatePicker(currentDate: string, onSelect: (date: string | null) => void) {
+  console.log("Triggering native date picker with currentDate:", currentDate);
+  
+  // Create a visible but small date input positioned near the cursor
+  const dateInput = document.createElement("input");
+  dateInput.type = "date";
+  dateInput.style.position = "fixed";
+  dateInput.style.left = "50%";
+  dateInput.style.top = "50%";
+  dateInput.style.transform = "translate(-50%, -50%)";
+  dateInput.style.zIndex = "10000";
+  dateInput.style.opacity = "0.01"; // Nearly invisible but still clickable
+  dateInput.style.pointerEvents = "auto";
+  dateInput.value = currentDate || "";
+  
+  console.log("Created date input:", dateInput);
+  
+  // Add to body
+  document.body.appendChild(dateInput);
+  console.log("Added date input to body");
+  
+  // Handle date change
+  dateInput.addEventListener("change", () => {
+    console.log("Date input changed to:", dateInput.value);
+    const result = dateInput.value;
+    document.body.removeChild(dateInput);
+    onSelect(result);
+  });
+  
+  // Handle blur (user clicked away)
+  dateInput.addEventListener("blur", () => {
+    console.log("Date input blurred");
+    setTimeout(() => {
+      if (document.body.contains(dateInput)) {
+        document.body.removeChild(dateInput);
+        onSelect(null);
       }
-    });
-    setTimeout(() => input.focus(), 50);
-    const btnRow = contentEl.createEl("div", { cls: "pm-timeline-controls" });
-    const okBtn = btnRow.createEl("button", { text: "OK" });
-    okBtn.onclick = () => this.submit(input.value);
-    const cancelBtn = btnRow.createEl("button", { text: "Cancel" });
-    cancelBtn.onclick = () => this.closeWith(null);
-  }
-
-  submit(val: string) {
-    const clean = val.trim();
-    if (clean === "") {
-      this.closeWith("");
-      return;
-    }
-    // @ts-ignore callable moment
-    const d = (moment as any)(clean, "YYYY-MM-DD", true);
-    if (!d.isValid()) {
-      new Notice("Invalid date. Use YYYY-MM-DD.");
-      return;
-    }
-    this.closeWith(clean);
-  }
-
-  closeWith(val: string | null) {
-    if (this.resolve) this.resolve(val);
-    this.close();
-  }
+    }, 100);
+  });
+  
+  // Focus and show the picker
+  setTimeout(() => {
+    console.log("Focusing date input...");
+    dateInput.focus();
+    dateInput.showPicker?.(); // Modern browsers support this
+    console.log("Date picker should be visible now");
+  }, 10);
 }
 
 /** Discrete zoom stops (px per day) shown in the slider */
@@ -279,6 +266,9 @@ export class TimelineView extends ItemView {
     /* ── Shared tooltip reused by every bar ───────────────────────────── */
     let barTip: HTMLElement | null = null;
     const showBarTip = (html: string, rect: DOMRect) => {
+      /* Only show tooltips if the setting is enabled */
+      if (this.plugin.settings.showTooltips === false) return;
+      
       /* Create or reuse floating tooltip element */
       if (!barTip || !document.body.contains(barTip)) {
         barTip?.remove();
@@ -1126,6 +1116,25 @@ export class TimelineView extends ItemView {
       this.saveAndRender();            // redraw bars with / without labels
     };
     
+    /* ---------- tooltip ON / OFF toggle button ---------- */
+    const tooltipToggle = rightControls.createEl("span", { cls: "pm-tooltip-toggle" });
+    attachTip(tooltipToggle, "Show / hide bar tooltips/popups");
+
+    const updateTooltipIcon = () => {
+      setIcon(tooltipToggle, "info");   // Lucide "info" icon
+      tooltipToggle.classList.toggle("off", this.plugin.settings.showTooltips === false);
+    };
+    updateTooltipIcon();
+
+    tooltipToggle.onclick = async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      this.plugin.settings.showTooltips = this.plugin.settings.showTooltips === false;
+      await this.plugin.saveSettings?.();
+      updateTooltipIcon();
+      this.saveAndRender();            // redraw timeline with / without tooltips
+    };
+    
     /* ---------- milestone ON / OFF toggle button ---------- */
     const milestoneToggle = rightControls.createEl("span", { cls: "pm-milestone-toggle" });
     attachTip(milestoneToggle, "Show / hide milestone guidelines");
@@ -1164,29 +1173,38 @@ export class TimelineView extends ItemView {
     };
     refreshCalLabels();
     
-    const promptDate = async (label: string, current: string): Promise<string | null> => {
-      const modal = new DatePromptModal(this.app, label, current);
-      return await modal.openWithPromise();
-    };
-
-    startCal.onclick = async (e) => {
+    startCal.onclick = (e) => {
       e.preventDefault();
-      const res = await promptDate("timeline START", this.plugin.settings.timelineStart || "");
-      if (res === null) return;
-      this.plugin.settings.timelineStart = res;
-      await this.plugin.saveSettings?.();
-      this.saveAndRender();
-      refreshCalLabels();
+      e.stopPropagation();
+      console.log("Start calendar clicked");
+      
+      triggerNativeDatePicker(
+        this.plugin.settings.timelineStart || "",
+        (result) => {
+          console.log("Start date picker result:", result);
+          if (result === null) return; // User cancelled
+          this.plugin.settings.timelineStart = result;
+          this.plugin.saveSettings?.();
+          this.saveAndRender();
+          refreshCalLabels();
+        }
+      );
     };
     
-    endCal.onclick = async (e) => {
+    endCal.onclick = (e) => {
       e.preventDefault();
-      const res = await promptDate("timeline END", this.plugin.settings.timelineEnd || "");
-      if (res === null) return;
-      this.plugin.settings.timelineEnd = res;
-      await this.plugin.saveSettings?.();
-      this.saveAndRender();
-      refreshCalLabels();
+      e.stopPropagation();
+      
+      triggerNativeDatePicker(
+        this.plugin.settings.timelineEnd || "",
+        (result) => {
+          if (result === null) return; // User cancelled
+          this.plugin.settings.timelineEnd = result;
+          this.plugin.saveSettings?.();
+          this.saveAndRender();
+          refreshCalLabels();
+        }
+      );
     };
     
     nameHeader.style.width = `${this.labelWidth}px`;
@@ -3232,6 +3250,15 @@ export class TimelineView extends ItemView {
     // Clear old
     this.heatLayerEl.innerHTML = "";
 
+    // Calculate the timeline anchor date (same logic as in render method)
+    const today =
+      this.plugin.settings.timelineStart && this.plugin.settings.timelineStart !== ""
+        ? (moment as any)(
+            this.plugin.settings.timelineStart,
+            "YYYY-MM-DD"
+          ).startOf("day")
+        : (moment as any)().startOf("day");
+
     // Render a cell for every day from 0 to horizon (inclusive)
     for (let offset = 0; offset <= horizon; offset++) {
       const count = heat[offset] ?? 0;
@@ -3257,8 +3284,8 @@ export class TimelineView extends ItemView {
       const showTip = () => {
         if (tip) return;
         
-        // Calculate the date for this offset
-        const date = (moment as any)().add(offset, 'days');
+        // Calculate the date for this offset using the timeline anchor date
+        const date = today.clone().add(offset, 'days');
         const dateStr = date.format('dddd, MMMM Do YYYY');
         
         tip = document.createElement("div");

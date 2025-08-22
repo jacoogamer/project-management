@@ -16,6 +16,7 @@ export interface PmSettings {
     showHeatmap: boolean;
     showAssignees: boolean;
     showMilestones: boolean;
+    showTooltips: boolean;
     showBarShadows: boolean;
     allowBarMove: boolean;
     timelineStart?: string;
@@ -39,10 +40,12 @@ export interface PmSettings {
     showTimelineRibbon: boolean;
     showTaskRibbon: boolean;
     showResourcesRibbon: boolean;
+    showCalendarRibbon: boolean;
     reuseProgressPane: boolean;
     reuseTimelinePane: boolean;
     reuseTaskWeeksPane: boolean;
     reuseResourcesPane: boolean;
+    lastSelectedPortfolio?: string;
 }
 export declare const DEFAULT_SETTINGS: PmSettings;
 export declare class PmSettingsTab extends PluginSettingTab {
