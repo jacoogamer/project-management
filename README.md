@@ -73,7 +73,7 @@ A comprehensive project management plugin for Obsidian that helps you organize, 
 ### Using BRAT (Beta Reviewer Auto-updater Tool)
 1. Install the [BRAT plugin](https://github.com/TfTHacker/obsidian42-brat) in Obsidian
 2. Open **Settings** → **Community plugins** → **BRAT**
-3. Add this repository: `https://github.com/jacoogamer/obsidian-pm-plugin`
+3. Add this repository: `https://github.com/jacoogamer/project-management`
 4. The plugin will appear in your Community Plugins list
 5. Install and enable the plugin
 
@@ -218,8 +218,29 @@ Tasks can have the following statuses:
 - **Dependencies**: Show task dependencies with interactive arrows
 - **Milestones**: Display project milestones as diamonds (toggle visibility)
 - **Interactive Controls**: Drag to adjust dates, zoom in/out, scroll through time
-- **Heatmap**: Optional heatmap showing task density by day
+- **Heatmap**: Optional heatmap showing task density by day (subtasks only)
 - **Project Tooltips**: Hover over bars to see project details
+- **Start Date Mode**: Toggle to view tasks sorted chronologically by start date
+- **Action Item Creation**: Create new tasks directly from Portfolio and Timeline views
+- **Enhanced Tooltips**: Rich tooltips with project context, descriptions, and assignee info
+- **Completed Task Styling**: Visual indicators for completed tasks with check icons and green bars
+- **Proper Indentation**: Hierarchical indentation for Epics, Stories, and Sub-tasks
+
+**Start Date Mode Features**:
+- **Chronological Sorting**: View all tasks across projects sorted by start date
+- **Project Context**: Project information shown in tooltips instead of header rows
+- **Hierarchical Indentation**: Tasks indented based on type (Epics: 0px, Stories: 12px, Sub-tasks: 24px)
+- **Consistent Styling**: Same visual styling as normal mode with proper bullet points and check icons
+- **Heatmap Support**: Task density heatmap showing subtask workload by day
+- **Tooltip Toggle**: Show/hide bar tooltips with toggle button
+- **Drag Functionality**: Drag and resize bars even in start date mode
+
+**Action Item Creation**:
+- **Quick Task Creation**: Create new Epics, Stories, or Sub-tasks from Portfolio and Timeline views
+- **Smart Dropdowns**: Project selection with alphabetical sorting
+- **Assignee Management**: Select from existing assignees with alphabetical sorting
+- **Dependency Tracking**: Link tasks to existing tasks within the same project
+- **Proper Formatting**: Automatically generates correctly formatted task entries with checkboxes and properties
 
 **Best Practices**:
 - Set start and end dates in project front matter for accurate timelines
@@ -227,6 +248,9 @@ Tasks can have the following statuses:
 - Add milestones for important deadlines and checkpoints
 - Use the heatmap to identify busy periods and resource conflicts
 - Zoom and scroll to focus on specific time periods
+- Use start date mode for weekly planning and chronological task review
+- Create action items directly from views for quick task addition
+- Use tooltips to get detailed task information without opening files
 
 ### 🔧 Resources View - Team Management
 
@@ -347,6 +371,7 @@ The plugin provides several commands that can be accessed through the Command Pa
 | Command | Description |
 |---------|-------------|
 | "Create New Project Note" | Creates a new project with proper structure |
+| "Create New Action Item" | Creates a new task (Epic, Story, or Sub-task) with interactive form |
 | "Re‑index Project/Task Cache" | Manually refreshes the project cache |
 
 ### Ribbon Icons
@@ -403,15 +428,26 @@ This project is licensed under the MIT License. See LICENSE file for details
 ## Changelog
 
 ### Latest Version
+- **Start Date Mode**: New timeline view mode for chronological task sorting
+- **Action Item Creation**: Interactive form to create new tasks from Portfolio and Timeline views
+- **Enhanced Tooltips**: Rich tooltips with project context, descriptions, and assignee information
+- **Completed Task Styling**: Visual indicators for completed tasks with check icons and green bars
+- **Improved Bullet Styling**: Proper indentation and styling for task bullets in start date mode
+- **Tooltip Toggle**: Show/hide bar tooltips with toggle button in timeline view
+- **Heatmap Improvements**: Heatmap now only counts subtasks for accurate work density
+- **Project Grouping**: Removed project headers in start date mode for cleaner chronological view
+- **Drag Functionality**: Full drag and resize support in start date mode
+- **Task Hierarchy**: Proper grouping of stories under epics and subtasks under stories
+- **Ellipsis Truncation**: Dynamic text truncation that responds to available width
+- **Icon Tooltip Fixes**: Proper cleanup of icon tooltips to prevent lingering popups
+
+### Previous Versions
 - Added Calendar view with monthly task planning interface
 - Added task filter input to Progress view
 - Improved dark mode styling for project rows
 - Fixed weekly top toggle functionality
 - Removed clickable links from week headers
 - Enhanced Epic/Story/Sub-task visibility controls
-
-### Previous Versions
-See CHANGELOG.md for complete version history.
 
 ---
 

@@ -89,4 +89,12 @@ export declare class ProjectCache {
      * Relies on a scalar `status` property key in settings.
      */
     moveTaskToStatus(taskId: string, status: string): Promise<void>;
+    /**
+     * Get all project files from the cache
+     */
+    getProjectFiles(): Promise<TFile[]>;
+    /**
+     * Get tasks for a specific project
+     */
+    getProjectTasks(projectPath: string): TaskItem[];
 }

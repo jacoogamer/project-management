@@ -267,6 +267,13 @@ body.theme-dark .pm-tl-bar.pm-tl-bar-done {
   font-weight: bold;
 }
 
+/* Task bullet point styling */
+.pm-task-bullet {
+  color: var(--text-muted);
+  margin-right: 6px;
+  font-size: 0.9em;
+}
+
 /* === Dependency arrows ======================================== */
 .pm-arrow-layer {
   position: absolute;
@@ -380,11 +387,13 @@ svg .pm-dep-arrow:not(.pm-arrow-hover) {
 .pm-tl-tasktoggle,
 .pm-fold-all-caret,
 .pm-fold-caret,
+.pm-hide-bars-toggle,
 .pm-heatmap-toggle,
 .pm-move-toggle,
 .pm-arrow-toggle,
 .pm-assignee-toggle,
 .pm-milestone-toggle,
+.pm-start-date-sort-toggle,
 .pm-cal-start,
 .pm-cal-end {
   cursor: pointer;
@@ -393,11 +402,13 @@ svg .pm-dep-arrow:not(.pm-arrow-hover) {
 .pm-tl-tasktoggle svg,
 .pm-fold-all-caret svg,
 .pm-fold-caret svg,
+.pm-hide-bars-toggle svg,
 .pm-heatmap-toggle svg,
 .pm-move-toggle svg,
 .pm-arrow-toggle svg,
 .pm-assignee-toggle svg,
 .pm-milestone-toggle svg,
+.pm-start-date-sort-toggle svg,
 .pm-cal-start svg,
 .pm-cal-end svg {
   stroke: currentColor;
@@ -407,7 +418,9 @@ svg .pm-dep-arrow:not(.pm-arrow-hover) {
 .pm-heatmap-toggle.off svg,
 .pm-move-toggle.off svg,
 .pm-arrow-toggle.off svg,
-.pm-assignee-toggle.off svg {
+.pm-assignee-toggle.off svg,
+.pm-hide-bars-toggle.off svg,
+.pm-start-date-sort-toggle.off svg {
   opacity: 0.35;  /* visibly “off” */
 }
 
@@ -532,6 +545,9 @@ body.theme-dark .pm-milestone-line {
 /* Offset control‑panel icons slightly lower than the zoom slider */
 .pm-tl-topheader .pm-tl-tasktoggle,
 .pm-tl-topheader .pm-fold-all-caret,
+.pm-tl-topheader .pm-hide-bars-toggle {
+  margin-right: 8px;  /* add spacing between icons */
+},
 .pm-tl-topheader .pm-move-toggle,
 .pm-tl-topheader .pm-arrow-toggle,
 .pm-tl-topheader .pm-assignee-toggle,
@@ -763,6 +779,7 @@ svg marker#pmArrowHeadHover path {
 .pm-assignee-toggle svg,
 .pm-tooltip-toggle svg,
 .pm-milestone-toggle svg,
+.pm-start-date-sort-toggle svg,
 .pm-cal-start svg,
 .pm-cal-end svg,
 .pm-project-eye svg {
@@ -776,7 +793,8 @@ svg marker#pmArrowHeadHover path {
 .pm-arrow-toggle.off svg,
 .pm-assignee-toggle.off svg,
 .pm-tooltip-toggle.off svg,
-.pm-milestone-toggle.off svg {
+.pm-milestone-toggle.off svg,
+.pm-start-date-sort-toggle.off svg {
   stroke: var(--text-muted) !important;
   color: var(--text-muted) !important;
   opacity: 0.5 !important;
@@ -792,6 +810,7 @@ svg marker#pmArrowHeadHover path {
 .pm-tl-row:hover .pm-assignee-toggle svg,
 .pm-tl-row:hover .pm-tooltip-toggle svg,
 .pm-tl-row:hover .pm-milestone-toggle svg,
+.pm-tl-row:hover .pm-start-date-sort-toggle svg,
 .pm-tl-row:hover .pm-cal-start svg,
 .pm-tl-row:hover .pm-cal-end svg,
 .pm-tl-row:hover .pm-project-eye svg {
@@ -851,6 +870,42 @@ body.theme-dark .pm-proj-baseline::after {
   align-items: center;
   justify-content: center;
   height: 100%;
+}
+
+/* Flat task list styling */
+.pm-flat-task-label {
+  color: var(--text-normal);
+  font-size: var(--font-ui-medium);
+  line-height: 1.4;
+  padding: 4px 0;
+}
+
+/* Project rows in flat task list */
+.pm-tl-project-row {
+  background: var(--background-modifier-hover);
+  border-bottom: 1px solid var(--background-modifier-border);
+  font-weight: 600;
+  color: var(--text-accent);
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+}
+
+.pm-tl-project-label {
+  padding: 8px 12px;
+  font-size: var(--font-ui-medium);
+  font-weight: 600;
+  color: var(--text-accent);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.pm-project-name {
+  color: var(--text-accent);
+  font-weight: 600;
+  flex: 1;
 }
 
 .pm-tl-row .pm-fold-caret svg,

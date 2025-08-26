@@ -23,18 +23,32 @@ export declare class TimelineView extends ItemView {
     private zoomPxPerDay;
     /** true while a zoom drag has a render queued */
     private zoomRenderScheduled;
+    /** Cache of row elements to avoid repeated querySelector calls */
+    private timelineRows;
+    /** Throttled style update for zoom changes */
+    private zoomStyleUpdateScheduled;
+    /** Show flat task list sorted by start date instead of project grouping */
+    private sortByStartDate;
     /** Remember scroll offsets between renders triggered externally */
     private pendingScroll;
     /** Projects whose task list is currently collapsed */
     private collapsed;
     /** Projects manually hidden via the per‑project eye icon */
     private hiddenProjects;
+    /** Whether to hide bars when projects are collapsed */
+    private hideBarsWhenCollapsed;
     /** Optional set of project file paths to display (injected by Portfolio view) */
     private filterPaths?;
     /** Optional name of the portfolio that opened this timeline */
     private filterName?;
     /** Keeps the vertical splitter height in sync with pane resize */
     private splitterRO;
+    /** Debounced render to prevent excessive refreshes */
+    private renderTimeout;
+    private pendingSettingsChanges;
+    /** Batch multiple operations into a single render */
+    private renderBatchTimeout;
+    private pendingRenderOperations;
     constructor(leaf: WorkspaceLeaf, cache: ProjectCache, plugin?: ProjectManagementPlugin);
     /**
      * Obsidian calls setState when the view is first loaded or when
@@ -52,6 +66,16 @@ export declare class TimelineView extends ItemView {
     /** Display the same icon used in the ribbon ("calendar-clock"). */
     getIcon(): string;
     onOpen(): Promise<void>;
+    /** Debounced render to prevent excessive refreshes */
+    private debouncedRender;
+    /** Save settings and render with debouncing */
+    private saveAndRenderDebounced;
+    /** Batch multiple render operations into a single render */
+    private batchRender;
+    /** Render a flat task list sorted by start date */
+    private renderFlatTaskList;
+    /** Efficiently update zoom-related styles without full render */
+    private updateZoomStyles;
     /** Allow Portfolio view to refresh the project filter at runtime */
     updateFilter(paths: string[], name?: string): void;
     onClose(): Promise<void>;

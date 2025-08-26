@@ -1,9 +1,1 @@
-{
-  "id": "project-management",
-  "name": "Project Management",
-  "version": "1.1.0",
-  "minAppVersion": "1.9.0",
-  "description": "Manage portfolios and projects all within a series of views. Included views: today, dashboard, progress, weekly, timeline, resources",
-  "author": "JacooGamer",
-  "isDesktopOnly": false
-}
+{"id":"project-management","name":"Project Management","version":"1.2.0","minAppVersion":"1.9.0","description":"Manage portfolios and projects all within a series of views. Included views: calendar,today, dashboard, progress, weekly, timeline, resources","author":"JacooGamer","isDesktopOnly":false}

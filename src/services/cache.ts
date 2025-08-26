@@ -182,6 +182,18 @@ meta.listItems?.forEach((item: any) => {
     const cells = rowText.split("|").map(c => c.replace(/\u00A0/g, " ").trim());
     if (cells.length && cells[0] === "") cells.shift();                    // leading pipe
     if (cells.length && cells[cells.length - 1] === "") cells.pop();       // trailing pipe
+    
+
+    
+    // Extract epic reference from table structure (for stories)
+    if (cells.length >= 2 && cells[1] && cells[1].trim().match(/^[Ee]-\d+$/)) {
+      props["epic"] = cells[1].trim();
+    }
+    
+    // Extract story reference from table structure (for subtasks)
+    if (cells.length >= 2 && cells[1] && cells[1].trim().match(/^[Ss]-\d+$/)) {
+      props["story"] = cells[1].trim();
+    }
     /* Heuristic: walk from right to left until we find the first non‑date cell */
     const dateRe = /^\d{4}-\d{2}-\d{2}$/;
     for (let i = cells.length - 1; i >= 2; i--) {  // skip ID + Summary columns
@@ -282,6 +294,16 @@ fileLines.forEach((line, idx) => {
     const cells = line.split("|").map(c => c.replace(/\u00A0/g, " ").trim());
     if (cells.length && cells[0] === "") cells.shift();
     if (cells.length && cells[cells.length - 1] === "") cells.pop();
+
+    // Extract epic reference from table structure (for stories)
+    if (cells.length >= 2 && cells[1] && cells[1].trim().match(/^[Ee]-\d+$/)) {
+      props["epic"] = cells[1].trim();
+    }
+    
+    // Extract story reference from table structure (for subtasks)
+    if (cells.length >= 2 && cells[1] && cells[1].trim().match(/^[Ss]-\d+$/)) {
+      props["story"] = cells[1].trim();
+    }
 
     const dateRe = /^\d{4}-\d{2}-\d{2}$/;
     for (let i = cells.length - 1; i >= 2; i--) {
@@ -487,5 +509,20 @@ fileLines.forEach((line, idx) => {
    */
   async moveTaskToStatus(taskId: string, status: string) {
     await this.updateTask(taskId, { [this.plugin.settings.statusProperty]: status });
+  }
+
+  /**
+   * Get all project files from the cache
+   */
+  async getProjectFiles(): Promise<TFile[]> {
+    return Array.from(this.projects.values()).map(project => project.file);
+  }
+
+  /**
+   * Get tasks for a specific project
+   */
+  getProjectTasks(projectPath: string): TaskItem[] {
+    const project = this.projects.get(projectPath);
+    return project ? project.tasks : [];
   }
 }

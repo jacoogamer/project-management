@@ -118,18 +118,54 @@ function orderTasksDash(tasks: ExtendedTaskItem[]): ExtendedTaskItem[] {
   const done = new Set<ExtendedTaskItem>();
   const out: ExtendedTaskItem[] = [];
 
+  /* Quick look‑ups by epic and story properties */
+  const storiesByEpic = new Map<string, ExtendedTaskItem[]>();
+  const subsByStory = new Map<string, ExtendedTaskItem[]>();
+
+  tasks.forEach((t) => {
+    const id = (t.id ?? "").toString();
+    
+    if (/^s\b/i.test(id) && !/^sb\b/i.test(id)) {
+      // Group stories by their epic property
+      const epicRef = (t.props?.epic ?? "").toString().trim().toLowerCase();
+      if (epicRef) {
+        (storiesByEpic.get(epicRef) ?? storiesByEpic.set(epicRef, []).get(epicRef)!).push(t);
+      }
+    } else if (/^sb\b/i.test(id)) {
+      // Group subtasks by their story property
+      const storyRef = (t.props?.story ?? "").toString().trim().toLowerCase();
+      if (storyRef) {
+        (subsByStory.get(storyRef) ?? subsByStory.set(storyRef, []).get(storyRef)!).push(t);
+      }
+    }
+  });
+
   const pushWithSubs = (t: ExtendedTaskItem) => {
     if (done.has(t)) return;
     done.add(t);
     out.push(t);
 
-    // Push SB‑ tasks that depend on this Story
+    const id = (t.id ?? "").toString().toLowerCase();
+
+    if (/^e\b/i.test(id)) {
+      /* Push Stories that belong to this epic */
+      const stories = storiesByEpic.get(id) ?? [];
+      stories.forEach(pushWithSubs);
+    }
+
+    if (/^s\b/i.test(id) && !/^sb\b/i.test(id)) {
+      /* Push SB‑tasks that belong to this story */
+      const subtasks = subsByStory.get(id) ?? [];
+      subtasks.forEach(pushWithSubs);
+    }
+
+    // Also push SB tasks that depend on this Story (fallback for dependency-based relationships)
     tasks.forEach((sb) => {
       if (done.has(sb)) return;
-      const id   = (sb.id ?? "").toLowerCase();
-      if (!id.startsWith("sb")) return;
+      const sbId = (sb.id ?? "").toLowerCase();
+      if (!sbId.startsWith("sb")) return;
       const deps = (sb.depends ?? []).map((d: string) => d.toLowerCase());
-      if (deps.includes((t.id ?? "").toLowerCase())) pushWithSubs(sb);
+      if (deps.includes(id)) pushWithSubs(sb);
     });
   };
 
@@ -173,7 +209,7 @@ export class TaskWeeksView extends ItemView {
   private showSubTasks = true;             // show/hide sub-tasks
   private displayMode: 'start' | 'due' = 'start';  // display tasks by start date or due date
   private sortMode: 'project' | 'hierarchical' | 'alphabetical' = 'project';  // project grouping, hierarchical, or alphabetical
-  private collapsedProjects = new Set<string>();  // track collapsed project dividers
+  private collapsedProjects = new Set<string>();  // track collapsed project dividers (format: "weekPath:projectName")
 
   private cache: ProjectCache;
   private settings: PmSettings;
@@ -300,37 +336,44 @@ export class TaskWeeksView extends ItemView {
 
   /** Check if all projects are currently collapsed */
   private areAllProjectsCollapsed(): boolean {
-    if (this.sortMode !== 'project' && this.sortMode !== 'hierarchical') {
-      return false; // Not applicable for alphabetical mode
+    if (this.sortMode !== 'project' && this.sortMode !== 'hierarchical' && this.sortMode !== 'alphabetical') {
+      return false; // Not applicable for other modes
     }
     
-    // Get all unique project names from the current data
-    const projectNames = new Set<string>();
+    // Get only the visible/filtered project names
+    const visibleProjectNames = new Set<string>();
     this.cache.projects.forEach((project: ProjectEntry) => {
-      project.tasks?.forEach((task: TaskItem) => {
+      // Only include projects that match the current filter
+      if (!this.filterPaths || this.filterPaths.has(project.file.path)) {
         const projectName = project.file.basename ?? "Unknown Project";
-        projectNames.add(projectName);
-      });
+        visibleProjectNames.add(projectName);
+      }
     });
     
-    // Check if all projects are in the collapsed set
-    return Array.from(projectNames).every(projectName => 
-      this.collapsedProjects.has(projectName)
-    );
+    // Check if all visible projects are in the collapsed set (for any week)
+    return Array.from(visibleProjectNames).every(projectName => {
+      // Check if this project is collapsed in any week
+      return Array.from(this.collapsedProjects).some(collapsedKey => 
+        collapsedKey.endsWith(`:${projectName}`)
+      );
+    });
   }
 
   /** Collapse all projects */
   private collapseAllProjects(): void {
-    if (this.sortMode !== 'project' && this.sortMode !== 'hierarchical') {
-      return; // Not applicable for alphabetical mode
+    if (this.sortMode !== 'project' && this.sortMode !== 'hierarchical' && this.sortMode !== 'alphabetical') {
+      return; // Not applicable for other modes
     }
     
-    // Get all unique project names and add them to collapsed set
+    // Get only the visible/filtered project names and add them to collapsed set
     this.cache.projects.forEach((project: ProjectEntry) => {
-      project.tasks?.forEach((task: TaskItem) => {
+      // Only collapse projects that match the current filter
+      if (!this.filterPaths || this.filterPaths.has(project.file.path)) {
         const projectName = project.file.basename ?? "Unknown Project";
-        this.collapsedProjects.add(projectName);
-      });
+        // Add to collapsed set for this specific week
+        const collapsedKey = `${project.file.path}:${projectName}`;
+        this.collapsedProjects.add(collapsedKey);
+      }
     });
   }
 
@@ -547,12 +590,52 @@ export class TaskWeeksView extends ItemView {
       // Check if all projects are currently collapsed
       const allCollapsed = this.areAllProjectsCollapsed();
       
+      // Only toggle if there are multiple visible projects
+      const visibleProjectNames = new Set<string>();
+      this.cache.projects.forEach((project: ProjectEntry) => {
+        if (!this.filterPaths || this.filterPaths.has(project.file.path)) {
+          const projectName = project.file.basename ?? "Unknown Project";
+          visibleProjectNames.add(projectName);
+        }
+      });
+      
+      // If there's only one project visible, don't toggle - just maintain its current state
+      if (visibleProjectNames.size <= 1) {
+        return;
+      }
+      
       if (allCollapsed) {
-        // Expand all projects
-        this.collapsedProjects.clear();
+        // Expand all projects - remove all collapsed keys for visible projects
+        const keysToRemove: string[] = [];
+        this.collapsedProjects.forEach(key => {
+          const projectName = key.split(':').pop(); // Get project name from "weekPath:projectName"
+          if (projectName && visibleProjectNames.has(projectName)) {
+            keysToRemove.push(key);
+          }
+        });
+        keysToRemove.forEach(key => this.collapsedProjects.delete(key));
       } else {
-        // Collapse all projects
-        this.collapseAllProjects();
+        // Collapse all projects - add collapsed keys for all visible projects in all weeks
+        // We need to add keys for each week that contains these projects
+        const weekPaths = new Set<string>();
+        
+        // Collect all week paths that contain visible projects
+        this.cache.projects.forEach((project: ProjectEntry) => {
+          if (!this.filterPaths || this.filterPaths.has(project.file.path)) {
+            weekPaths.add(project.file.path);
+          }
+        });
+        
+        // Add collapsed keys for each visible project in each week
+        weekPaths.forEach(weekPath => {
+          this.cache.projects.forEach((project: ProjectEntry) => {
+            if (!this.filterPaths || this.filterPaths.has(project.file.path)) {
+              const projectName = project.file.basename ?? "Unknown Project";
+              const collapsedKey = `${weekPath}:${projectName}`;
+              this.collapsedProjects.add(collapsedKey);
+            }
+          });
+        });
       }
       
       this.render();
@@ -1279,7 +1362,8 @@ export class TaskWeeksView extends ItemView {
 
     // Auto‑collapse only on the very first render; afterwards respect user toggles
     if (this.firstRender) {
-      this.collapsed = new Set(projects.map(p => p.file.path));
+      // Initialize collapsed set with all weeks on first render
+      projects.forEach(p => this.collapsed.add(p.file.path));
       // Also collapse the today row on first render
       this.collapsed.add(todayWeek.file.path);
       this.firstRender = false;
@@ -1589,18 +1673,48 @@ export class TaskWeeksView extends ItemView {
             tasks.push(...sortedProjectTasks);
           }
         } else {
-          // Sort alphabetically by task text
-          tasks = [...(project as any).tasks as any[]].sort((a, b) => {
-            const textA = (a.text ?? "").toLowerCase();
-            const textB = (b.text ?? "").toLowerCase();
-            return textA.localeCompare(textB);
+          // Sort alphabetically by task text, but still group by project
+          const projectGroups = new Map<string, any[]>();
+          
+          // Group tasks by their project
+          (project as any).tasks.forEach((t: any) => {
+            const projectName = t.projectName ?? t.project?.file?.basename ?? "Unknown Project";
+            if (!projectGroups.has(projectName)) {
+              projectGroups.set(projectName, []);
+            }
+            projectGroups.get(projectName)!.push(t);
           });
+          
+          // Sort projects alphabetically, then sort tasks alphabetically within each project
+          const sortedProjects = Array.from(projectGroups.keys()).sort();
+          tasks = [];
+          
+          for (let i = 0; i < sortedProjects.length; i++) {
+            const projectName = sortedProjects[i];
+            const projectTasks = projectGroups.get(projectName)!;
+            
+            // Add project divider
+            tasks.push({ 
+              _isProjectDivider: true, 
+              _projectName: projectName,
+              _originalTasks: projectTasks 
+            });
+            
+            // Sort tasks within this project alphabetically
+            const sortedProjectTasks = projectTasks.sort((a, b) => {
+              const textA = (a.text ?? "").toLowerCase();
+              const textB = (b.text ?? "").toLowerCase();
+              return textA.localeCompare(textB);
+            });
+            tasks.push(...sortedProjectTasks);
+          }
         }
         for (const t of tasks) {
           // Handle project divider rows
           if ((t as any)._isProjectDivider) {
             const projectName = (t as any)._projectName;
-            const isProjectCollapsed = this.collapsedProjects.has(projectName);
+            const collapsedKey = `${project.file.path}:${projectName}`;
+            const isProjectCollapsed = this.collapsedProjects.has(collapsedKey);
             
             const dividerRow = tbody.createEl("tr", { cls: "pm-project-divider" });
             
@@ -1636,10 +1750,13 @@ export class TaskWeeksView extends ItemView {
               const scrollTop = tableContainer?.scrollTop || 0;
               const scrollHeight = tableContainer?.scrollHeight || 0;
               
-              if (this.collapsedProjects.has(projectName)) {
-                this.collapsedProjects.delete(projectName);
+              // Create week-specific project key
+              const collapsedKey = `${project.file.path}:${projectName}`;
+              
+              if (this.collapsedProjects.has(collapsedKey)) {
+                this.collapsedProjects.delete(collapsedKey);
               } else {
-                this.collapsedProjects.add(projectName);
+                this.collapsedProjects.add(collapsedKey);
               }
               
               this.render();
@@ -1665,10 +1782,11 @@ export class TaskWeeksView extends ItemView {
             continue;
           }
           
-          /* Skip tasks if their project is collapsed */
-          if (this.sortMode === 'project' || this.sortMode === 'hierarchical') {
+          /* Skip tasks if their project is collapsed in this week */
+          if (this.sortMode === 'project' || this.sortMode === 'hierarchical' || this.sortMode === 'alphabetical') {
             const taskProjectName = t.projectName ?? t.project?.file?.basename ?? "Unknown Project";
-            if (this.collapsedProjects.has(taskProjectName)) {
+            const collapsedKey = `${project.file.path}:${taskProjectName}`;
+            if (this.collapsedProjects.has(collapsedKey)) {
               continue;
             }
           }

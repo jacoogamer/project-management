@@ -10,6 +10,7 @@ import { CalendarView, VIEW_TYPE_PM_CALENDAR } from "./views/calendar";
 import { ProjectCache } from "./services/cache";
 import { PmSettings, DEFAULT_SETTINGS, PmSettingsTab } from "../settings";
 import { newProject } from "./newProject";
+import { newActionItem } from "./newActionItem";
 
 export default class ProjectManagementPlugin extends Plugin {
   public settings!: PmSettings;
@@ -56,6 +57,11 @@ export default class ProjectManagementPlugin extends Plugin {
       id: "pm-new-project",
       name: "Create New Project Note",
       callback: () => newProject(this.app),
+    });
+    this.addCommand({
+      id: "pm-new-action-item",
+      name: "Create New Action Item",
+      callback: () => newActionItem(this.app, this.cache),
     });
     this.addCommand({
       id: "open-weekly-task-view",

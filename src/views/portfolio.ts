@@ -14,6 +14,7 @@ import {
 } from "obsidian";
 import { ProjectCache } from "../services/cache";
 import { newProject } from "../newProject";
+import { newActionItem } from "../newActionItem";
 import { PmSettings } from "../../settings";
 import { VIEW_TYPE_PM_PROGRESS } from "./progress";
 import { VIEW_TYPE_PM_TIMELINE } from "./timeline";
@@ -854,8 +855,9 @@ export class PortfolioView extends ItemView {
       };
     }
 
-    /* ── Create Project button under list ──────────────────── */
+    /* ── Create Project and Task buttons under list ──────────────────── */
     const createWrap = sidebar.createDiv({ cls: "pm-create-proj" });
+    
     const createBtn  = createWrap.createEl("button", { text: "Create Project" });
     attachTip(createBtn, "Create a new project in the selected folder");
 
@@ -872,6 +874,13 @@ export class PortfolioView extends ItemView {
           this.render();                 // re‑render sidebar + table
         }, 250);
       }).open();
+    };
+
+    const createTaskBtn = createWrap.createEl("button", { text: "Create Task" });
+    attachTip(createTaskBtn, "Create a new action item in an existing project");
+
+    createTaskBtn.onclick = () => {
+      newActionItem(this.app, this.cache);
     };
 
     /* ---- main panel ---- */

@@ -124,6 +124,15 @@ export class TimelineView extends ItemView {
   })();
   /** true while a zoom drag has a render queued */
   private zoomRenderScheduled = false;
+  
+  /** Cache of row elements to avoid repeated querySelector calls */
+  private timelineRows: HTMLElement[] = [];
+  
+  /** Throttled style update for zoom changes */
+  private zoomStyleUpdateScheduled = false;
+  
+  /** Show flat task list sorted by start date instead of project grouping */
+  private sortByStartDate = false;
 
   /** Remember scroll offsets between renders triggered externally */
   private pendingScroll: { v: number; h: number } | null = null;
@@ -132,6 +141,8 @@ export class TimelineView extends ItemView {
   private collapsed = new Set<string>();
   /** Projects manually hidden via the per‑project eye icon */
   private hiddenProjects = new Set<string>();
+  /** Whether to hide bars when projects are collapsed */
+  private hideBarsWhenCollapsed = false;
 
   /** Optional set of project file paths to display (injected by Portfolio view) */
   private filterPaths?: Set<string>;
@@ -140,6 +151,14 @@ export class TimelineView extends ItemView {
 
   /** Keeps the vertical splitter height in sync with pane resize */
   private splitterRO: ResizeObserver | null = null;
+  
+  /** Debounced render to prevent excessive refreshes */
+  private renderTimeout: ReturnType<typeof setTimeout> | null = null;
+  private pendingSettingsChanges = false;
+  
+  /** Batch multiple operations into a single render */
+  private renderBatchTimeout: ReturnType<typeof setTimeout> | null = null;
+  private pendingRenderOperations: Set<string> = new Set();
   
   constructor(
     leaf: WorkspaceLeaf,
@@ -195,17 +214,675 @@ export class TimelineView extends ItemView {
     // live refresh on cache updates
     this.detachFn = this.cache.onChange(() => this.saveAndRender());
   }
+  /** Debounced render to prevent excessive refreshes */
+  private debouncedRender(delay: number = 100) {
+    if (this.renderTimeout) {
+      clearTimeout(this.renderTimeout);
+    }
+    this.renderTimeout = setTimeout(() => {
+      this.renderTimeout = null;
+      this.render();
+    }, delay);
+  }
+
+  /** Save settings and render with debouncing */
+  private async saveAndRenderDebounced() {
+    if (this.pendingSettingsChanges) {
+      await this.plugin.saveSettings?.();
+      this.pendingSettingsChanges = false;
+    }
+    this.debouncedRender();
+  }
+
+  /** Batch multiple render operations into a single render */
+  private batchRender(operation: string, delay: number = 150) {
+    this.pendingRenderOperations.add(operation);
+    
+    if (this.renderBatchTimeout) {
+      clearTimeout(this.renderBatchTimeout);
+    }
+    
+    this.renderBatchTimeout = setTimeout(() => {
+      this.renderBatchTimeout = null;
+      this.pendingRenderOperations.clear();
+      
+      // Clean up any lingering tooltips before re-rendering
+      document.querySelectorAll(".pm-dash-tooltip").forEach(el => el.remove());
+      
+      this.saveAndRender();
+    }, delay);
+  }
+
+  /** Render a flat task list sorted by start date */
+  private renderFlatTaskList(leftPane: HTMLElement, rightPane: HTMLElement, pxPerDay: number, horizon: number, today: moment.Moment, projects: ProjectEntry[]) {
+    /** Return a description for a task using a three‑step, robust heuristic. */
+    const getDescription = (t: TaskItem): string => {
+      /* 1️⃣  Any prop whose key (after trimming NBSP/space and lower‑casing)
+             equals "description" */
+      for (const [rawK, rawV] of Object.entries(t.props)) {
+        const k = rawK.replace(/\u00A0/g, " ").trim().toLowerCase();
+        if (k === "description") {
+          const v = rawV.replace(/\u00A0/g, " ").trim();
+          if (v) return v;
+        }
+      }
+
+      /* 2️⃣  Table‑row heuristic: capture the cell under the "Description" column.
+             We assume the first cell holds the ID, so try cell[1] first; if that
+             looks like a date or is blank, fall back to scanning right‑to‑left
+             for the first non‑date cell. */
+      if (t.text.includes("|")) {
+        const cells = t.text.split("|").map(s => s.replace(/\u00A0/g, " ").trim());
+        if (cells.length && cells[0] === "") cells.shift();           // leading pipe
+        if (cells.length && cells[cells.length - 1] === "") cells.pop(); // trailing pipe
+
+        const dateRe = /^\d{4}-\d{2}-\d{2}$/;
+
+        /* Prefer the cell immediately after the ID (index 1) */
+        if (cells.length >= 2) {
+          const cand = cells[1];
+          if (cand && !dateRe.test(cand)) return cand;
+        }
+
+        /* Fallback: walk from right to left, pick first non‑date, non‑blank cell */
+        for (let i = cells.length - 1; i >= 0; i--) {
+          const cell = cells[i];
+          if (cell && !dateRe.test(cell)) return cell;
+        }
+      }
+
+      /* 3️⃣  Extra lines under the checkbox bullet */
+      const lines = t.text
+        .split("\n")
+        .slice(1)
+        .map(s => s.trim())
+        .filter(Boolean);
+      return lines.join(" ");
+    };
+
+    /** Local done predicate to mirror normal mode */
+    const isTaskDone = (t: TaskItem): boolean => {
+      const anyT = t as any;
+      if (anyT.done === true || t.checked === true) return true;
+      if (typeof anyT.done === "string" && anyT.done.toLowerCase() === "done") return true;
+      if (typeof anyT.percentComplete === "number" && anyT.percentComplete >= 1) return true;
+      const raw = (anyT.raw ?? t.text ?? "").toString();
+      return /^\s*-\s*\[[xX]\]/.test(raw);
+    };
+
+    // Helper function to render a single task
+    const renderTask = (task: TaskItem, project: ProjectEntry) => {
+      const rowLeft = leftPane.createEl("div", { cls: "pm-tl-taskrow" });
+      const rowRight = rightPane.createEl("div", { cls: "pm-tl-row" });
+      
+      // Cache the row for efficient zoom updates
+      this.timelineRows.push(rowRight);
+      
+      // Set minimum width for zoom compatibility
+      rowRight.style.minWidth = `${(horizon + 1) * pxPerDay}px`;
+
+      // Create task label with proper indentation and styling
+      const taskText = task.text.split("\n")[0].trim();
+      
+      // Add bullet point or check icon for completed tasks
+      if (isTaskDone(task)) {
+        const chk = rowLeft.createEl("span");
+        setIcon(chk, "check-circle");
+        chk.addClass("pm-task-check");
+        chk.style.marginRight = "4px";
+      } else {
+        const bullet = rowLeft.createEl("span", { 
+          text: "•", 
+          cls: "pm-task-bullet" 
+        });
+      }
+      
+      const taskLink = rowLeft.createEl("a", {
+        text: taskText, // Use full text, let CSS handle truncation
+        href: `${project.file.path}#^${task.id}`,
+      });
+
+      // Add ID prefix
+      const idLower = task.id.toLowerCase();
+      const num = task.id.match(/\d+/)?.[0] ?? "";
+      let prefix = "";
+      if (idLower.startsWith("sb")) {
+        prefix = `SB-${num}. `;
+      } else if (idLower.startsWith("s")) {
+        prefix = `S-${num}. `;
+      } else if (idLower.startsWith("e")) {
+        prefix = `E-${num}. `;
+      }
+      taskLink.setText(prefix + taskText);
+
+      // In start date mode, we want to show hierarchical relationships through indentation
+      // but maintain chronological order. So we'll indent based on task type and relationships.
+      const idTag = (task.id ?? "").toUpperCase();
+      let indent = 0;
+      
+      if (idTag.startsWith("E")) {
+        // Epics: no indent
+        indent = 0;
+      } else if (idTag.startsWith("S") && !idTag.startsWith("SB")) {
+        // Stories: indent by 1 level
+        indent = 1;
+      } else if (idTag.startsWith("SB")) {
+        // Subtasks: indent by 2 levels
+        indent = 2;
+      }
+      
+      taskLink.style.marginLeft = `${indent * 12}px`;
+
+      // Bold for "E" or plain "S" (not SB)
+      if (
+        idLower.startsWith("e") ||                       // any "E…"
+        (idLower.startsWith("s") && !idLower.startsWith("sb"))  // "S…" but NOT "SB…"
+      ) {
+        taskLink.classList.add("pm-task-bold");
+      }
+
+      taskLink.addClass("pm-tl-label");               // inherit ellipsis styles
+      // Adjust width to account for indentation
+      const availableWidth = this.labelWidth - (indent * 12);
+      taskLink.style.width = `${availableWidth}px`;
+
+      /* ── Hover tooltip for this task ─────────────────────────── */
+      {
+        let tip: HTMLElement | null = null;
+
+        const showTip = () => {
+          /* Build short text & ID prefix locally */
+          const raw       = task.text.split("\n")[0].trim();
+          const shortTxt  = raw.length > 70 ? raw.slice(0, 67) + "…" : raw;
+
+          let idPrefix = "";
+          {
+            const idL  = task.id.toLowerCase();
+            const num  = task.id.match(/\d+/)?.[0] ?? "";
+            if (idL.startsWith("sb"))      idPrefix = `SB-${num}. `;
+            else if (idL.startsWith("s") && !idL.startsWith("sb")) idPrefix = `S-${num}. `;
+            else if (idL.startsWith("e"))  idPrefix = `E-${num}. `;
+          }
+          const who = (task.props["assignee"] ?? "").replace(/\u00A0/g, " ").trim() || "—";
+          const fmt = (s: string) => (s && s.trim() !== "" ? s.trim() : "—");
+          const startIso = (task.props["start"] ?? "").replace(/\u00A0/g, " ").trim();
+          const dueIso = (task.props["due"] ?? "").replace(/\u00A0/g, " ").trim();
+          const desc = getDescription(task);
+          const html = `
+            <strong>${idPrefix}${shortTxt}</strong>${desc ? `<br><em>${desc}</em>` : ""}
+            <br><span>Project: ${project.file.basename}</span>
+            <br><span>Start: ${fmt(startIso)}</span>
+            <br><span>Due&nbsp;&nbsp;: ${fmt(dueIso)}</span>
+            <br><span>Assignee:&nbsp;${who}</span>
+          `;
+
+          tip = document.createElement("div");
+          tip.className = "pm-dash-tooltip";
+          tip.innerHTML = html;
+          document.body.appendChild(tip);
+
+          /* Position beside the link, keep on-screen and under header */
+          const r   = taskLink.getBoundingClientRect();
+          const pad = 8;
+          const w   = tip.offsetWidth;
+          let x = r.right + pad;
+          if (x + w > window.innerWidth - pad) {
+            x = Math.max(r.left - pad - w, pad);
+          }
+          const h = tip.offsetHeight;
+          let y   = Math.max(r.top, 48);
+          if (y + h > window.innerHeight - pad) {
+            y = Math.max(window.innerHeight - h - pad, 48);
+          }
+          tip.style.left = `${x}px`;
+          tip.style.top  = `${y}px`;
+        };
+
+        const hideTip = () => { tip?.remove(); tip = null; };
+
+        taskLink.addEventListener("mouseenter", showTip);
+        taskLink.addEventListener("mouseleave", hideTip);
+      }
+
+      taskLink.onclick = (e) => {
+        e.preventDefault();
+        this.openAndScroll(project.file.path, task.id, task.line);
+      };
+
+      // Create task bar
+      const barWrap = rowRight.createEl("div", { cls: "pm-tl-barwrap" });
+      barWrap.style.height = "27px";
+      barWrap.style.position = "relative";
+
+      const startIso = (task.props["start"] ?? "").replace(/\u00A0/g, " ").trim();
+      const dueIso = (task.props["due"] ?? "").replace(/\u00A0/g, " ").trim();
+      
+      if (startIso && dueIso) {
+        // @ts-ignore callable moment
+        const start = (moment as any)(startIso, "YYYY-MM-DD");
+        // @ts-ignore callable moment
+        const due = (moment as any)(dueIso, "YYYY-MM-DD");
+        
+        if (start.isValid() && due.isValid()) {
+          const startOff = start.diff(today, "days");
+          const spanDays = Math.max(due.diff(start, "days") + 1, 1);
+
+          const bar = barWrap.createEl("div", { cls: "pm-tl-bar" });
+          bar.style.left = `${startOff * pxPerDay}px`;
+          bar.style.width = `${Math.max(spanDays * pxPerDay, 3)}px`;
+          bar.style.zIndex = "2";
+
+          // Color by task type
+          const id = task.id.toLowerCase();
+          if (id.startsWith("e")) bar.addClass("pm-bar-e");
+          else if (id.startsWith("sb")) bar.addClass("pm-bar-sb");
+          else if (id.startsWith("s")) bar.addClass("pm-bar-s");
+
+          // Completed state (match normal mode)
+          const isDone = isTaskDone(task);
+          if (isDone) {
+            bar.addClass("pm-tl-bar-done");
+          }
+
+          // Urgency color
+          if (!isDone) {
+            const dOff = due.diff(today, "days");
+            if (dOff < 0) bar.addClass("pm-bar-overdue");
+            else if (dOff <= 10) bar.addClass("pm-bar-warning");
+          }
+
+          // Bar tooltip with hover events (same as normal timeline mode)
+          if (this.plugin.settings.showTooltips !== false) {
+            const buildHtml = () => {
+              /* Build short text & ID prefix locally */
+              const raw = task.text.split("\n")[0].trim();
+              const shortTxt = raw.length > 70 ? raw.slice(0, 67) + "…" : raw;
+
+              let idPrefix = "";
+              {
+                const idL = task.id.toLowerCase();
+                const num = task.id.match(/\d+/)?.[0] ?? "";
+                if (idL.startsWith("sb")) idPrefix = `SB-${num}. `;
+                else if (idL.startsWith("s") && !idL.startsWith("sb")) idPrefix = `S-${num}. `;
+                else if (idL.startsWith("e")) idPrefix = `E-${num}. `;
+              }
+              const who = (task.props["assignee"] ?? "").replace(/\u00A0/g, " ").trim() || "—";
+              const fmt = (s: string) => (s && s.trim() !== "" ? s.trim() : "—");
+              const startIso = (task.props["start"] ?? "").replace(/\u00A0/g, " ").trim();
+              const dueIso = (task.props["due"] ?? "").replace(/\u00A0/g, " ").trim();
+              const desc = getDescription(task);
+              
+              return `
+                <strong>${idPrefix}${shortTxt}</strong>${desc ? `<br><em>${desc}</em>` : ""}
+                <br><span>Project: ${project.file.basename}</span>
+                <br><span>Start: ${fmt(startIso)}</span>
+                <br><span>Due&nbsp;&nbsp;: ${fmt(dueIso)}</span>
+                <br><span>Assignee:&nbsp;${who}</span>
+              `;
+            };
+
+            let barTooltip: HTMLElement | null = null;
+            
+            bar.addEventListener("mouseenter", (ev) => {
+              const rect = bar.getBoundingClientRect();
+              const html = buildHtml();
+              
+              // Create tooltip element
+              barTooltip = document.createElement("div");
+              barTooltip.className = "pm-dash-tooltip";
+              barTooltip.innerHTML = html;
+              document.body.appendChild(barTooltip);
+
+              // Position tooltip
+              const pad = 8;
+              const w = barTooltip.offsetWidth;
+              let left = rect.right + pad;
+              if (left + w > window.innerWidth - pad) {
+                left = Math.max(rect.left - pad - w, pad);
+              }
+
+              const h = barTooltip.offsetHeight;
+              let top = Math.max(rect.top, 48);
+              if (top + h > window.innerHeight - pad) {
+                top = Math.max(window.innerHeight - h - pad, 48);
+              }
+
+              barTooltip.style.left = `${left}px`;
+              barTooltip.style.top = `${top}px`;
+            });
+
+            bar.addEventListener("mouseleave", () => {
+              if (barTooltip && document.body.contains(barTooltip)) {
+                barTooltip.remove();
+                barTooltip = null;
+              }
+            });
+          }
+
+          // Track pointer movement for drag detection
+          let dragMoved = false;
+          let dragStartX = 0;
+
+          // Add drag functionality (same as regular timeline bars)
+          if (this.plugin.settings.allowBarMove !== false) {
+            const origOffset = startOff;
+            const origSpan = spanDays;
+            
+            // Resize handles
+            const leftHandle = bar.createEl("div", { cls: "pm-resize-handle left" });
+            const rightHandle = bar.createEl("div", { cls: "pm-resize-handle right" });
+
+            [leftHandle, rightHandle].forEach(h => {
+              h.style.position = "absolute";
+              h.style.top = "0";
+              h.style.width = "6px";
+              h.style.height = "100%";
+              h.style.cursor = "ew-resize";
+              h.style.touchAction = "none";
+              h.style.background = "transparent";
+            });
+            leftHandle.style.left = "0";
+            rightHandle.style.right = "0";
+
+            // Pointer events for resize handles
+            leftHandle.addEventListener("pointerdown", (ev) => {
+              if (ev.button !== 0) return;
+              ev.stopPropagation();
+              bar.setPointerCapture(ev.pointerId);
+              
+              // Calculate current visual position of the bar
+              const currentLeft = parseFloat(bar.style.left) || 0;
+              const currentDayOffset = Math.round(currentLeft / pxPerDay);
+              const currentWidth = parseFloat(bar.style.width) || 0;
+              const currentSpan = Math.round(currentWidth / pxPerDay);
+              
+              currentDrag = {
+                barEl: bar,
+                startClientX: ev.clientX,
+                originalDayOffset: currentDayOffset,
+                originalSpan: currentSpan,
+                taskPath: project.file.path + "::" + task.id,
+                mode: "resize-left"
+              };
+            });
+
+            rightHandle.addEventListener("pointerdown", (ev) => {
+              if (ev.button !== 0) return;
+              ev.stopPropagation();
+              bar.setPointerCapture(ev.pointerId);
+              
+              // Calculate current visual position of the bar
+              const currentLeft = parseFloat(bar.style.left) || 0;
+              const currentDayOffset = Math.round(currentLeft / pxPerDay);
+              const currentWidth = parseFloat(bar.style.width) || 0;
+              const currentSpan = Math.round(currentWidth / pxPerDay);
+              
+              currentDrag = {
+                barEl: bar,
+                startClientX: ev.clientX,
+                originalDayOffset: currentDayOffset,
+                originalSpan: currentSpan,
+                taskPath: project.file.path + "::" + task.id,
+                mode: "resize-right"
+              };
+            });
+
+            bar.addEventListener("pointerdown", (ev) => {
+              if (ev.button !== 0) return;
+              ev.preventDefault();
+              dragMoved = false;
+              dragStartX = ev.clientX;
+              bar.setPointerCapture(ev.pointerId);
+              
+              // Calculate current visual position of the bar
+              const currentLeft = parseFloat(bar.style.left) || 0;
+              const currentDayOffset = Math.round(currentLeft / pxPerDay);
+              
+              currentDrag = {
+                barEl: bar,
+                startClientX: ev.clientX,
+                originalDayOffset: currentDayOffset,
+                originalSpan: origSpan,
+                taskPath: project.file.path + "::" + task.id,
+                mode: "move"
+              };
+              bar.style.opacity = "0.6";
+            });
+
+            bar.addEventListener("pointermove", (ev) => {
+              if (Math.abs(ev.clientX - dragStartX) > 3) dragMoved = true;
+              
+              if (!currentDrag || currentDrag.barEl !== bar) return;
+              const deltaPx = ev.clientX - currentDrag.startClientX;
+              const deltaDays = Math.round(deltaPx / pxPerDay);
+
+              if (currentDrag.mode === "move") {
+                const newOffset = currentDrag.originalDayOffset + deltaDays;
+                bar.style.left = `${newOffset * pxPerDay}px`;
+              } else if (currentDrag.mode === "resize-left") {
+                const newOffset = currentDrag.originalDayOffset + deltaDays;
+                const newSpan = currentDrag.originalSpan - deltaDays;
+                if (newSpan >= 1) {
+                  bar.style.left = `${newOffset * pxPerDay}px`;
+                  bar.style.width = `${newSpan * pxPerDay}px`;
+                }
+              } else { // resize-right
+                const newSpan = currentDrag.originalSpan + deltaDays;
+                if (newSpan >= 1) {
+                  bar.style.width = `${newSpan * pxPerDay}px`;
+                }
+              }
+            });
+
+            bar.addEventListener("pointerup", (ev) => {
+              if (!currentDrag || currentDrag.barEl !== bar) return;
+              bar.releasePointerCapture(ev.pointerId);
+              bar.style.opacity = "";
+              const deltaDays = Math.round(
+                (ev.clientX - currentDrag.startClientX) / pxPerDay
+              );
+              if (deltaDays !== 0) {
+                if (currentDrag.mode === "move") {
+                  /* Bubble event so main.ts can update markdown */
+                  this.containerEl.dispatchEvent(
+                    new CustomEvent("pm-bar-moved", {
+                      detail: {
+                        taskPath: currentDrag.taskPath,
+                        deltaDays: deltaDays,
+                        mode: currentDrag.mode
+                      }
+                    })
+                  );
+                } else {
+                  /* Bubble event for resize operations */
+                  this.containerEl.dispatchEvent(
+                    new CustomEvent("pm-bar-resized", {
+                      detail: {
+                        taskPath: currentDrag.taskPath,
+                        deltaDays: deltaDays,
+                        mode: currentDrag.mode
+                      }
+                    })
+                  );
+                }
+              }
+              currentDrag = null;
+            });
+
+            // Hover feedback: change cursor to ↔ at edges
+            bar.addEventListener("mousemove", (ev) => {
+              if (this.plugin.settings.allowBarMove === false) return;
+              const offsetX = ev.offsetX;
+              const edge = 6;
+              bar.style.cursor =
+                offsetX < edge || bar.clientWidth - offsetX < edge ? "ew-resize" : "default";
+            });
+          }
+
+          // Click handler (only if not dragging)
+          bar.onclick = (e) => {
+            if (dragMoved) return; // Don't open if we were dragging
+            e.preventDefault();
+            this.openAndScroll(project.file.path, task.id, task.line);
+          };
+        }
+      }
+    };
+    // Collect all tasks from all projects
+    const allTasks: Array<{task: TaskItem, project: ProjectEntry}> = [];
+    
+    projects.forEach((project: ProjectEntry) => {
+      if (this.hiddenProjects.has(project.file.path)) return;
+      
+      project.tasks.forEach((task: TaskItem) => {
+        const startIso = (task.props["start"] ?? "").replace(/\u00A0/g, " ").trim();
+        if (startIso) {
+          // @ts-ignore callable moment
+          const start = (moment as any)(startIso, "YYYY-MM-DD");
+          if (start.isValid()) {
+            allTasks.push({task, project});
+          }
+        }
+      });
+    });
+
+    // Sort by start date
+    allTasks.sort((a, b) => {
+      const aStart = (moment as any)(a.task.props["start"], "YYYY-MM-DD");
+      const bStart = (moment as any)(b.task.props["start"], "YYYY-MM-DD");
+      return this.sortAsc ? aStart.diff(bStart) : bStart.diff(aStart);
+    });
+
+    // In start date mode, render tasks directly without project headers
+    // Project information will be shown in tooltips instead
+    allTasks.forEach(({task, project}) => {
+      renderTask(task, project);
+    });
+    
+    // Add heatmap support for flat task list
+    const heatmapEnabled: boolean = this.plugin.settings.showHeatmap ?? true;
+    if (heatmapEnabled) {
+      // Build heat data from all tasks
+      const heat: Record<number, number> = {};
+      
+      // Collect only subtasks (SB-) for heatmap, as per normal mode
+      const allSubtasks: Array<{task: TaskItem, project: ProjectEntry}> = [];
+      projects.forEach((project: ProjectEntry) => {
+        if (this.hiddenProjects.has(project.file.path)) return;
+        
+        project.tasks.forEach((task: TaskItem) => {
+          // Only include subtasks (SB-) in heatmap
+          if (task.id.toLowerCase().startsWith('sb')) {
+            const startIso = (task.props["start"] ?? "").replace(/\u00A0/g, " ").trim();
+            const dueIso = (task.props["due"] ?? "").replace(/\u00A0/g, " ").trim();
+            if (startIso && dueIso) {
+              // @ts-ignore callable moment
+              const start = (moment as any)(startIso, "YYYY-MM-DD");
+              // @ts-ignore callable moment
+              const due = (moment as any)(dueIso, "YYYY-MM-DD");
+              if (start.isValid() && due.isValid()) {
+                allSubtasks.push({task, project});
+              }
+            }
+          }
+        });
+      });
+      
+      // Build heat data
+      allSubtasks.forEach(({task}) => {
+        const startIso = (task.props["start"] ?? "").replace(/\u00A0/g, " ").trim();
+        const dueIso = (task.props["due"] ?? "").replace(/\u00A0/g, " ").trim();
+        if (startIso && dueIso) {
+          // @ts-ignore callable moment
+          const start = (moment as any)(startIso, "YYYY-MM-DD");
+          // @ts-ignore callable moment
+          const due = (moment as any)(dueIso, "YYYY-MM-DD");
+          if (start.isValid() && due.isValid()) {
+            const startOff = start.diff(today, "days");
+            const spanDays = Math.max(due.diff(start, "days") + 1, 1);
+            
+            // Add heat for each day in the task's range
+            for (let i = 0; i < spanDays; i++) {
+              const dayOffset = startOff + i;
+              heat[dayOffset] = (heat[dayOffset] || 0) + 1;
+            }
+          }
+        }
+      });
+      
+      // Render the heatmap
+      this.renderHeatmap(heat, pxPerDay, horizon);
+      
+      // Show the heatmap strip
+      if (this.heatLayerEl) {
+        (this.heatLayerEl as HTMLElement).style.display = "block";
+      }
+      
+      // Keep header transparent so the strip shows through
+      const headerWrap = this.containerEl.querySelector<HTMLElement>(".pm-tl-headwrap");
+      if (headerWrap) {
+        headerWrap.style.background = "transparent";
+      }
+    } else {
+      // Hide heatmap if disabled
+      if (this.heatLayerEl) {
+        const hl = this.heatLayerEl as HTMLElement;
+        hl.style.display = "none";
+        hl.innerHTML = "";
+      }
+      
+      // Apply solid fallback background to header rows
+      const headerWrap = this.containerEl.querySelector<HTMLElement>(".pm-tl-headwrap");
+      if (headerWrap) {
+        headerWrap.style.background = "var(--background-primary, var(--background-secondary, #fff))";
+      }
+    }
+  }
+
+  /** Efficiently update zoom-related styles without full render */
+  private updateZoomStyles(pxPerDay: number, horizon: number) {
+    const minWidth = `${(horizon + 1) * pxPerDay}px`;
+    
+    // Update header width
+    const headerWrap = this.containerEl.querySelector<HTMLElement>(".pm-tl-header-wrap");
+    if (headerWrap) {
+      headerWrap.style.minWidth = minWidth;
+    }
+    
+    // Update all cached row widths in one batch
+    if (this.timelineRows.length > 0) {
+      this.timelineRows.forEach(row => {
+        row.style.minWidth = minWidth;
+      });
+    }
+  }
+
+
+
   /** Allow Portfolio view to refresh the project filter at runtime */
   public updateFilter(paths: string[], name?: string) {
     this.filterPaths = new Set(paths);
     this.filterName  = name;
-    this.render();
+    this.batchRender("filter-update");
   }
 
   async onClose() {
     this.detachFn?.();
     this.splitterRO?.disconnect();
     this.splitterRO = null;
+    if (this.renderTimeout) {
+      clearTimeout(this.renderTimeout);
+      this.renderTimeout = null;
+    }
+    if (this.renderBatchTimeout) {
+      clearTimeout(this.renderBatchTimeout);
+      this.renderBatchTimeout = null;
+    }
+    // Clear row cache to prevent memory leaks
+    this.timelineRows = [];
+    
+    // Clean up any lingering tooltips
+    document.querySelectorAll(".pm-dash-tooltip").forEach(el => el.remove());
   }
 
   /**
@@ -261,8 +938,19 @@ export class TimelineView extends ItemView {
     this.splitterRO?.disconnect();
     this.splitterRO = null;
     
+    /* Clear row cache for fresh references */
+    this.timelineRows = [];
+    
     /* Remove any floating tooltip from a previous render */
     document.querySelectorAll(".pm-dash-tooltip").forEach(el => el.remove());
+    
+    // Additional cleanup for any lingering tooltips
+    const cleanupTooltips = () => {
+      document.querySelectorAll(".pm-dash-tooltip").forEach(el => el.remove());
+    };
+    
+    // Clean up tooltips when switching modes or re-rendering
+    cleanupTooltips();
     /* ── Shared tooltip reused by every bar ───────────────────────────── */
     let barTip: HTMLElement | null = null;
     const showBarTip = (html: string, rect: DOMRect) => {
@@ -297,21 +985,44 @@ export class TimelineView extends ItemView {
       barTip.style.top  = `${top}px`;
     };
     const hideBarTip = () => { barTip?.remove(); barTip = null; };
-    /* Generic hover helper for icons (re‑uses showBarTip / hideBarTip) */
+    /* Generic hover helper for icons (always shows, not affected by tooltip setting) */
     const attachTip = (el: HTMLElement, text: string) => {
+      let iconTip: HTMLElement | null = null;
+      
       el.addEventListener("mouseenter", (ev) => {
         const m = ev as MouseEvent;
-        const fakeRect = {
-          left:   m.clientX,
-          right:  m.clientX,
-          top:    m.clientY + 6,      // ↓ nudge
-          bottom: m.clientY + 6,
-          width:  0,
-          height: 0,
-        } as DOMRect;
-        showBarTip(`<span>${text}</span>`, fakeRect);
+        
+        /* Create floating tooltip element for icons */
+        iconTip = document.createElement("div");
+        iconTip.className = "pm-dash-tooltip";
+        iconTip.innerHTML = `<span>${text}</span>`;
+        document.body.appendChild(iconTip);
+
+        const pad = 8;
+        const w   = iconTip.offsetWidth;
+        /* Horizontal clamp */
+        let left = m.clientX + pad;
+        if (left + w > window.innerWidth - pad) {
+          left = Math.max(m.clientX - pad - w, pad);
+        }
+
+        /* Vertical clamp */
+        const h   = iconTip.offsetHeight;
+        let top   = Math.max(m.clientY + 6, 48);              // keep below sticky header
+        if (top + h > window.innerHeight - pad) {
+          top = Math.max(window.innerHeight - h - pad, 48);
+        }
+
+        iconTip.style.left = `${left}px`;
+        iconTip.style.top  = `${top}px`;
       });
-      el.addEventListener("mouseleave", hideBarTip);
+      
+      el.addEventListener("mouseleave", () => {
+        if (iconTip && document.body.contains(iconTip)) {
+          iconTip.remove();
+          iconTip = null;
+        }
+      });
     };
     /* Pull updated default zoom from settings in case the user changed it via Settings */
     this.zoomPxPerDay = this.plugin.settings.zoomPxPerDay ?? this.zoomPxPerDay;
@@ -860,14 +1571,12 @@ export class TimelineView extends ItemView {
         if (newPx !== this.zoomPxPerDay) {
           this.zoomPxPerDay               = newPx;
           this.plugin.settings.zoomPxPerDay = newPx;   // persist
-          this.plugin.saveSettings?.();              // async save
-          headerWrap.style.minWidth = `${(horizon + 1) * this.zoomPxPerDay}px`;
-          /* Update each row's min‑width so the timeline doesn't remain wider than the header */
-          rightPane
-            .querySelectorAll<HTMLElement>(".pm-tl-row")
-            .forEach(r => (r.style.minWidth = `${(horizon + 1) * this.zoomPxPerDay}px`));
+          this.pendingSettingsChanges = true;
+          
+          // Update styles efficiently
+          this.updateZoomStyles(this.zoomPxPerDay, horizon);
           syncZoomPos();   // keep slider in view
-          this.saveAndRender();
+          this.batchRender("zoom-change");
         }
       };
     } else {
@@ -898,12 +1607,11 @@ export class TimelineView extends ItemView {
           if (ZOOM_STOPS[newIdx] !== this.zoomPxPerDay) {
             this.zoomPxPerDay = ZOOM_STOPS[newIdx];
             slider.value = newIdx.toString();
-            headerWrap.style.minWidth = `${(horizon + 1) * this.zoomPxPerDay}px`;
-            /* Adjust existing rows live while dragging */
-            rightPane
-              .querySelectorAll<HTMLElement>(".pm-tl-row")
-              .forEach(r => (r.style.minWidth = `${(horizon + 1) * this.zoomPxPerDay}px`));
+            
+            // Update styles efficiently
+            this.updateZoomStyles(this.zoomPxPerDay, horizon);
             syncZoomPos();   // keep slider pinned while dragging
+            
             /* throttle: queue exactly one re-render per animation frame */
             if (!this.zoomRenderScheduled) {
               this.zoomRenderScheduled = true;
@@ -922,7 +1630,6 @@ export class TimelineView extends ItemView {
           if (!this.zoomRenderScheduled) {
             this.plugin.settings.zoomPxPerDay = this.zoomPxPerDay;
             this.plugin.saveSettings?.();
-            headerWrap.style.minWidth = `${(horizon + 1) * this.zoomPxPerDay}px`;
             this.saveAndRender();
           }
         };
@@ -985,7 +1692,7 @@ export class TimelineView extends ItemView {
       e.preventDefault();
       e.stopPropagation();
       this.sortAsc = !this.sortAsc;
-      this.render();
+      this.batchRender("sort-toggle");
     };
 
     /* ---------- tasks ON/OFF toggle button ---------- */
@@ -1001,9 +1708,9 @@ export class TimelineView extends ItemView {
       e.preventDefault();
       e.stopPropagation(); // don't flip the sort order
       plugin.settings.showTasksInTimeline = !(plugin.settings.showTasksInTimeline ?? true);
-      await plugin.saveSettings?.();
+      this.pendingSettingsChanges = true;
       setIcon(toggleIcon, plugin.settings.showTasksInTimeline ? "eye" : "eye-off");
-      this.render(); // refresh current view
+      this.batchRender("tasks-toggle");
     };
 
     /* ---------- optional global fold/unfold caret ---------- */
@@ -1032,7 +1739,25 @@ export class TimelineView extends ItemView {
       const isCollapsed = this.collapsed.size === projects.length;
       if (allCaretIcon) setIcon(allCaretIcon, isCollapsed ? "plus-square" : "minus-square");
 
-      this.render();
+      this.batchRender("expand-collapse-all");
+    };
+
+    /* ---------- hide bars when collapsed toggle ---------- */
+    const hideBarsToggle = topControls.createEl("span", { cls: "pm-hide-bars-toggle" });
+    attachTip(hideBarsToggle, "Hide / show timeline bars when projects are collapsed");
+
+    const updateHideBarsIcon = () => {
+      setIcon(hideBarsToggle, "bar-chart-3");
+      hideBarsToggle.classList.toggle("off", this.hideBarsWhenCollapsed);
+    };
+    updateHideBarsIcon();
+
+    hideBarsToggle.onclick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      this.hideBarsWhenCollapsed = !this.hideBarsWhenCollapsed;
+      updateHideBarsIcon();
+      this.batchRender("hide-bars-toggle");
     };
 
     /* ---------- heat‑map ON / OFF toggle button ---------- */
@@ -1050,9 +1775,9 @@ export class TimelineView extends ItemView {
       e.preventDefault();
       e.stopPropagation();
       this.plugin.settings.showHeatmap = !this.plugin.settings.showHeatmap;
-      await this.plugin.saveSettings?.();
+      this.pendingSettingsChanges = true;
       updateHeatIcon();
-      this.saveAndRender();          // refresh timeline with/without strip
+      this.batchRender("heatmap-toggle");
     };
 
     /* ---------- allow-bar-move ON / OFF toggle button ---------- */
@@ -1071,9 +1796,9 @@ export class TimelineView extends ItemView {
       e.stopPropagation();
       // undefined counts as true; flip boolean
       this.plugin.settings.allowBarMove = this.plugin.settings.allowBarMove === false;
-      await this.plugin.saveSettings?.();
+      this.pendingSettingsChanges = true;
       updateMoveIcon();
-      this.saveAndRender();        // refresh rows so resize handles show/hide
+      this.batchRender("move-toggle");
     };
     
     /* ---------- dependency-arrows ON / OFF toggle button ---------- */
@@ -1092,9 +1817,9 @@ export class TimelineView extends ItemView {
       e.stopPropagation();
       // undefined counts as "true"; flip boolean
       this.plugin.settings.showArrows = this.plugin.settings.showArrows === false;
-      await this.plugin.saveSettings?.();
+      this.pendingSettingsChanges = true;
       updateArrowIcon();
-      this.saveAndRender();        // redraw timeline with/without arrows
+      this.batchRender("arrow-toggle");
     };
     
     /* ---------- assignee-label ON / OFF toggle button ---------- */
@@ -1111,9 +1836,9 @@ export class TimelineView extends ItemView {
       e.preventDefault();
       e.stopPropagation();
       this.plugin.settings.showAssignees = this.plugin.settings.showAssignees === false;
-      await this.plugin.saveSettings?.();
+      this.pendingSettingsChanges = true;
       updateAssigneeIcon();
-      this.saveAndRender();            // redraw bars with / without labels
+      this.batchRender("assignee-toggle");
     };
     
     /* ---------- tooltip ON / OFF toggle button ---------- */
@@ -1130,9 +1855,9 @@ export class TimelineView extends ItemView {
       e.preventDefault();
       e.stopPropagation();
       this.plugin.settings.showTooltips = this.plugin.settings.showTooltips === false;
-      await this.plugin.saveSettings?.();
+      this.pendingSettingsChanges = true;
       updateTooltipIcon();
-      this.saveAndRender();            // redraw timeline with / without tooltips
+      this.batchRender("tooltip-toggle");
     };
     
     /* ---------- milestone ON / OFF toggle button ---------- */
@@ -1149,9 +1874,31 @@ export class TimelineView extends ItemView {
       e.preventDefault();
       e.stopPropagation();
       this.plugin.settings.showMilestones = this.plugin.settings.showMilestones === false;
-      await this.plugin.saveSettings?.();
+      this.pendingSettingsChanges = true;
       updateMilestoneIcon();
-      this.saveAndRender();            // redraw timeline with / without milestones
+      this.batchRender("milestone-toggle");
+    };
+    
+    /* ---------- start date sort toggle button ---------- */
+    const startDateSortToggle = rightControls.createEl("span", { cls: "pm-start-date-sort-toggle" });
+    attachTip(startDateSortToggle, "Sort timeline by start date");
+
+    const updateStartDateSortIcon = () => {
+      setIcon(startDateSortToggle, "calendar-days");   // Lucide "calendar-days" icon
+      startDateSortToggle.classList.toggle("off", !this.sortByStartDate);
+    };
+    updateStartDateSortIcon();
+
+    startDateSortToggle.onclick = async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      // Clean up any lingering tooltips before switching modes
+      document.querySelectorAll(".pm-dash-tooltip").forEach(el => el.remove());
+      
+      this.sortByStartDate = !this.sortByStartDate;
+      updateStartDateSortIcon();
+      this.batchRender("start-date-sort-toggle");
     };
     
     /* ---------- timeline START / END calendar icons ---------- */
@@ -1237,6 +1984,39 @@ export class TimelineView extends ItemView {
         idLower(t).startsWith("s") && !idLower(t).startsWith("sb");
       const isSub   = (t: TaskItem) => idLower(t).startsWith("sb");
 
+      /** Get start date for a task */
+      const getTaskStartDate = (task: TaskItem): moment.Moment | null => {
+        const startIso = (task.props["start"] ?? "").replace(/\u00A0/g, " ").trim();
+        if (startIso) {
+          // @ts-ignore callable moment
+          const start = (moment as any)(startIso, "YYYY-MM-DD");
+          if (start.isValid()) {
+            return start;
+          }
+        }
+        return null;
+      };
+
+      /** Sort tasks by start date if enabled */
+      const sortByStartDate = (taskList: TaskItem[]): TaskItem[] => {
+        if (!this.sortByStartDate) return taskList;
+        
+        return taskList.sort((a, b) => {
+          const aStart = getTaskStartDate(a);
+          const bStart = getTaskStartDate(b);
+          
+          if (aStart && bStart) {
+            return this.sortAsc ? aStart.diff(bStart) : bStart.diff(aStart);
+          } else if (aStart) {
+            return this.sortAsc ? -1 : 1; // aStart comes first
+          } else if (bStart) {
+            return this.sortAsc ? 1 : -1; // bStart comes first
+          }
+          // Both have no start date, maintain original order
+          return 0;
+        });
+      };
+
       /** map Story‑id → [sub‑tasks]  (reuse existing Story column + depends logic) */
       const subsByStory = new Map<string, TaskItem[]>();
       const stripType = (raw: string) =>
@@ -1284,35 +2064,47 @@ export class TimelineView extends ItemView {
         });
       };
 
-      /** 1️⃣ Epics in original order, each followed by its Stories + Subs */
-      tasks.forEach(t => {
-        if (!isEpic(t) || done.has(t)) return;
+      /** 1️⃣ Epics sorted by start date (if enabled), each followed by its Stories + Subs */
+      const epics = tasks.filter(t => isEpic(t));
+      const sortedEpics = sortByStartDate(epics);
+      
+      sortedEpics.forEach(t => {
+        if (done.has(t)) return;
         done.add(t);
         out.push(t);
         const stories = storiesByEpic.get(idLower(t));
         if (stories) {
-          stories.forEach(pushStoryWithSubs);
+          const sortedStories = sortByStartDate(stories);
+          sortedStories.forEach(pushStoryWithSubs);
         }
       });
 
-      /** 2️⃣ Standalone Stories (no Epic) */
-      tasks.forEach(t => {
-        if (!isStory(t) || done.has(t)) return;
+      /** 2️⃣ Standalone Stories (no Epic) sorted by start date */
+      const standaloneStories = tasks.filter(t => isStory(t) && !done.has(t));
+      const sortedStandaloneStories = sortByStartDate(standaloneStories);
+      
+      sortedStandaloneStories.forEach(t => {
         pushStoryWithSubs(t);
       });
 
-      /** 3️⃣ Remaining tasks (subs w/out story, plain rows, etc.) */
-      tasks.forEach(t => {
-        if (!done.has(t)) {
-          done.add(t);
-          out.push(t);
-        }
+      /** 3️⃣ Remaining tasks (subs w/out story, plain rows, etc.) sorted by start date */
+      const remainingTasks = tasks.filter(t => !done.has(t));
+      const sortedRemainingTasks = sortByStartDate(remainingTasks);
+      
+      sortedRemainingTasks.forEach(t => {
+        done.add(t);
+        out.push(t);
       });
 
       return out;
     };
 
-    for (const project of projects) {
+    // Check if we should render flat task list instead of project grouping
+    if (this.sortByStartDate) {
+      this.renderFlatTaskList(leftPane, rightPane, pxPerDay, horizon, today, projects);
+    } else {
+      // Original project-based rendering
+      for (const project of projects) {
       /* Collect milestone offsets and tooltip HTML for this project */
       const projMilestones: { off: number; html: string }[] = [];
       /* ── Milestones for *this* project (table inside its note) ── */
@@ -1365,6 +2157,9 @@ export class TimelineView extends ItemView {
         rowRight.classList.add("pm-hide-bars");      
       /* Ensure separator spans the full timeline width */
       rowRight.style.minWidth = `${(horizon + 1) * pxPerDay}px`;
+      
+      // Cache the row for efficient zoom updates
+      this.timelineRows.push(rowRight);
       /* ----- project name with fold caret ----- */
       let caret: HTMLSpanElement | null = null;
       if (!barsMode) {                         /* only show when tasks list visible */
@@ -1385,7 +2180,7 @@ export class TimelineView extends ItemView {
               caret,
               this.collapsed.has(project.file.path) ? "chevron-right" : "chevron-down"
             );
-          this.render();
+          this.batchRender("project-collapse");
         };
       }
 
@@ -1419,7 +2214,7 @@ export class TimelineView extends ItemView {
         updateEyeVis();
 
         /* Re‑render so milestone guideline bars refresh */
-        this.render();
+        this.batchRender("project-visibility");
       };
       /* apply initial visibility */
       updateEyeVis();
@@ -1771,6 +2566,11 @@ export class TimelineView extends ItemView {
       }
       // Decide whether to draw bars or text lines
       const showBars = barsMode || this.collapsed.has(project.file.path);
+      
+      // Hide bars when project is collapsed and hide bars toggle is enabled
+      if (this.hideBarsWhenCollapsed && this.collapsed.has(project.file.path)) {
+        barWrap.classList.add("pm-hide-bars");
+      }
 
       if (!showBars) {
         if (this.collapsed.has(project.file.path)) {
@@ -2058,9 +2858,12 @@ export class TimelineView extends ItemView {
           const taskRowRight = rightPane.createEl("div", { cls: "pm-tl-row" });
           taskRowRight.dataset.proj = project.file.path;
           if (this.hiddenProjects.has(project.file.path))
-            taskRowRight.classList.add("pm-hide-bars");          
+            taskRowRight.classList.add("pm-hide-bars");
           /* Ensure separator spans the full timeline width */
           taskRowRight.style.minWidth = `${(horizon + 1) * pxPerDay}px`;
+          
+          // Cache the task row for efficient zoom updates
+          this.timelineRows.push(taskRowRight);
           /* If the timeline has exactly one project, make each task row shorter */
           let taskBarWrap: HTMLDivElement;
           if (projects.length === 1) {
@@ -3202,6 +4005,8 @@ export class TimelineView extends ItemView {
     //   id = idCell ? idCell[1] : `${file.path}-row-${idx}`;
     // }
     // id = id.toLowerCase(); // normalise for dependable matching
+    } // End of else block for project-based rendering
+
     /* Final scroll restore (after DOM fully built) */
     requestAnimationFrame(() => {
       const rightEl = this.containerEl.querySelector<HTMLElement>(".pm-tl-right");

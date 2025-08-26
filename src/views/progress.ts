@@ -106,39 +106,46 @@ function orderTasksDash(tasks: any[]): any[] {
   const core = (id: string = ""): string =>
     id.replace(/^[A-Za-z]+-?/, "").trim().toLowerCase();
 
-  /* Quick look‑ups by core */
-  const storiesByCore = new Map<string, any[]>();
-  const subsByCore    = new Map<string, any[]>();
+  /* Quick look‑ups by epic and story properties */
+  const storiesByEpic = new Map<string, any[]>();
+  const subsByStory = new Map<string, any[]>();
 
   tasks.forEach((t) => {
     const id = (t.id ?? "").toString();
-    const c  = core(id);
-    if (!c) return;
-
+    
     if (/^s\b/i.test(id) && !/^sb\b/i.test(id)) {
-      (storiesByCore.get(c) ?? storiesByCore.set(c, []).get(c)!).push(t);
+      // Group stories by their epic property
+      const epicRef = (t.props?.epic ?? "").toString().trim().toLowerCase();
+      if (epicRef) {
+        (storiesByEpic.get(epicRef) ?? storiesByEpic.set(epicRef, []).get(epicRef)!).push(t);
+      }
     } else if (/^sb\b/i.test(id)) {
-      (subsByCore.get(c) ?? subsByCore.set(c, []).get(c)!).push(t);
+      // Group subtasks by their story property
+      const storyRef = (t.props?.story ?? "").toString().trim().toLowerCase();
+      if (storyRef) {
+        (subsByStory.get(storyRef) ?? subsByStory.set(storyRef, []).get(storyRef)!).push(t);
+      }
     }
   });
 
-  /* Push a task and, if Epic/Story, its numeric children */
+  /* Push a task and, if Epic/Story, its children */
   const pushCascade = (t: any) => {
     if (done.has(t)) return;
     done.add(t);
     out.push(t);
 
-    const id = (t.id ?? "").toString();
-    const c  = core(id);
+    const id = (t.id ?? "").toString().toLowerCase();
 
     if (/^e\b/i.test(id)) {
-      /* Push Stories that share the numeric core */
-      (storiesByCore.get(c) ?? []).forEach(pushCascade);
+      /* Push Stories that belong to this epic */
+      const stories = storiesByEpic.get(id) ?? [];
+      stories.forEach(pushCascade);
     }
 
     if (/^s\b/i.test(id) && !/^sb\b/i.test(id)) {
-      /* Push SB‑tasks that share the numeric core */
-      (subsByCore.get(c) ?? []).forEach(pushCascade);
+      /* Push SB‑tasks that belong to this story */
+      const subtasks = subsByStory.get(id) ?? [];
+      subtasks.forEach(pushCascade);
     }
   };
 

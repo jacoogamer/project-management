@@ -251,6 +251,7 @@
 .pm-create-proj button {
   padding: 4px 12px;
   color: var(--text-normal);
+  margin: 0 4px;
 }
 .pm-port-bullet        { 
   width: 1.2em; 
